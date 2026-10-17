@@ -8,6 +8,9 @@ import { fromRow, toRow, TABLES, ts } from "./sync-map";
 import { getSupabase, isSyncConfigured } from "./supabase/client";
 
 /**
+ * Local-first cloud sync for a PRIVATE two-person household: Supabase RLS only admits allow-listed emails, and both people
+ * share the same rows.
+ *
  * Local-first cloud sync. localStorage stays the source of truth for the UI; when the user signs in,
  * each profile is reconciled with Supabase using last-write-wins on `updatedAt` (profile granularity):
  *   local newer  → push (upsert rows, delete rows removed locally)
@@ -30,18 +33,18 @@ export const useSyncStatus = create<SyncStatus>((set) => ({
 const CHUNK = 400;
 const fail = (what: string, e: { message: string } | null) => { if (e) throw new Error(`${what}: ${e.message}`); };
 
-async function pushProfile(sb: SupabaseClient, userId: string, p: Profile, data: ProfileData) {
+async function pushProfile(sb: SupabaseClient, p: Profile, data: ProfileData) {
   const { error } = await sb.from("profiles").upsert({
-    user_id: userId, id: p.id, nickname: p.nickname, lmp: p.lmp, notes: p.notes, status: p.status, icon: p.icon,
+    id: p.id, nickname: p.nickname, lmp: p.lmp, notes: p.notes, status: p.status, icon: p.icon,
     parent_labels: p.parentLabels, photo_asked: data.photoAsked, created_at: p.createdAt, updated_at: p.updatedAt ?? p.createdAt,
-  }, { onConflict: "user_id,id" });
+  }, { onConflict: "id" });
   fail("profile", error);
 
   for (const { key, table } of TABLES) {
     const items = data[key] as { id: string }[];
-    const rows = items.map((it, i) => toRow(it, userId, p.id, i));
+    const rows = items.map((it, i) => toRow(it, p.id, i));
     for (let i = 0; i < rows.length; i += CHUNK) {
-      const r = await sb.from(table).upsert(rows.slice(i, i + CHUNK), { onConflict: "user_id,id" });
+      const r = await sb.from(table).upsert(rows.slice(i, i + CHUNK), { onConflict: "id" });
       fail(table, r.error);
     }
     // remove rows that were deleted locally
@@ -96,7 +99,7 @@ export function syncNow(): Promise<void> {
     if (!session) throw new Error("Sign in to sync.");
     status.set({ syncing: true, error: null });
     try {
-      const uid = session.user.id;
+      const uid = session.user.id;   // used for per-user settings only
       const { data: remote, error } = await sb.from("profiles").select("id, updated_at");
       fail("profiles", error);
       const remoteMap = new Map((remote ?? []).map((r) => [r.id as string, ts(r.updated_at as string)]));
@@ -104,7 +107,7 @@ export function syncNow(): Promise<void> {
       for (const p of useStore.getState().profiles) {
         const lt = ts(p.updatedAt ?? p.createdAt);
         const rt = remoteMap.get(p.id);
-        if (rt === undefined || lt > rt) await pushProfile(sb, uid, p, useStore.getState().data[p.id]);
+        if (rt === undefined || lt > rt) await pushProfile(sb, p, useStore.getState().data[p.id]);
         else if (rt > lt) await pullProfile(sb, p.id);
         remoteMap.delete(p.id);
       }
@@ -131,7 +134,14 @@ export async function deleteRemoteProfile(id: string): Promise<void> {
 export async function sendMagicLink(email: string): Promise<void> {
   const sb = getSupabase();
   if (!sb) throw new Error("Cloud sync isn't configured.");
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}/settings` } });
+  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/settings` } });
+  fail("sign-in", error);
+}
+
+export async function signInWithPassword(email: string, password: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Cloud sync isn't configured.");
+  const { error } = await sb.auth.signInWithPassword({ email, password });
   fail("sign-in", error);
 }
 
@@ -161,5 +171,13 @@ export function startAutoSync(): () => void {
   const unsub = useStore.subscribe((s, prev) => {
     if (s.profiles !== prev.profiles || s.data !== prev.data || s.settingsUpdatedAt !== prev.settingsUpdatedAt) schedule(2500);
   });
-  return () => { clearTimeout(timer); sub.subscription.unsubscribe(); unsub(); };
+  // pick up the other person's edits: when the app regains focus, and once a minute while it's visible
+  const refresh = () => { if (document.visibilityState === "visible") schedule(0); };
+  document.addEventListener("visibilitychange", refresh);
+  window.addEventListener("focus", refresh);
+  const poll = setInterval(refresh, 60_000);
+  return () => {
+    clearTimeout(timer); clearInterval(poll); sub.subscription.unsubscribe(); unsub();
+    document.removeEventListener("visibilitychange", refresh); window.removeEventListener("focus", refresh);
+  };
 }

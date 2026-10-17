@@ -6,13 +6,13 @@ import { fromRow, TABLES, toRow, ts } from "./sync-map";
 describe("sync mapping", () => {
   it("converts camelCase store items to snake_case rows and back", () => {
     const item = { id: "a_1", title: "Dating scan", week: 8, dateOverride: "", providerId: "", isScan: true, done: false, notes: "", fileLink: "" };
-    const row = toRow(item, "user-1", "p_1", 3);
-    expect(row).toMatchObject({ user_id: "user-1", profile_id: "p_1", position: 3, date_override: "", provider_id: "", is_scan: true, file_link: "" });
+    const row = toRow(item, "p_1", 3);
+    expect(row).toMatchObject({ profile_id: "p_1", position: 3, date_override: "", provider_id: "", is_scan: true, file_link: "" });
     expect(fromRow(row)).toEqual(item);
   });
 
   it("drops undefined fields and keeps nulls / jsonb values", () => {
-    const row = toRow({ id: "n_1", ratings: [8, null], checks: { r1: true }, custom: undefined } as { id: string }, "u", "p", 0);
+    const row = toRow({ id: "n_1", ratings: [8, null], checks: { r1: true }, custom: undefined } as { id: string }, "p", 0);
     expect("custom" in row).toBe(false);
     expect(row.ratings).toEqual([8, null]);
     expect(row.checks).toEqual({ r1: true });
@@ -22,7 +22,7 @@ describe("sync mapping", () => {
     const data = seedProfileData();
     const raw: Record<string, unknown> = { photoAsked: data.photoAsked };
     for (const { key } of TABLES) {
-      raw[key] = (data[key] as { id: string }[]).map((it, i) => fromRow(toRow(it, "u", "p", i)));
+      raw[key] = (data[key] as { id: string }[]).map((it, i) => fromRow(toRow(it, "p", i)));
     }
     expect(ProfileDataSchema.parse(raw)).toEqual(data);
   });

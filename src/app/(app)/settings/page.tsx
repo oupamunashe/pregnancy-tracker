@@ -10,7 +10,7 @@ import { DIAPER_BRANDS, rangeText, sizeKey } from "@/lib/diaper";
 import { computeEdd, formatLong, isValidISO, parseDate } from "@/lib/engine/gestation";
 import { DEFAULT_THEME, type Theme } from "@/lib/schemas";
 import { useStore } from "@/lib/store";
-import { deleteRemoteProfile, sendMagicLink, signOut, syncNow, useSyncStatus } from "@/lib/sync";
+import { deleteRemoteProfile, sendMagicLink, signInWithPassword, signOut, syncNow, useSyncStatus } from "@/lib/sync";
 import { isUrl, shrinkImage } from "@/lib/utils";
 
 const ICONS: [string, string][] = [["🫐", "Blueberry"], ["🥜", "Peanut"], ["🌸", "Flower"], ["🥑", "Avocado"], ["👶", "Baby"], ["🍓", "Strawberry"], ["🥭", "Mango"], ["🍑", "Peach"], ["🌱", "Sprout"], ["🧸", "Teddy"], ["⭐", "Star"], ["💛", "Heart"]];
@@ -107,25 +107,33 @@ function ProfilesList() {
 function CloudSyncSection() {
   const { configured, email, syncing, lastSynced, error } = useSyncStatus();
   const [addr, setAddr] = useState("");
+  const [pw, setPw] = useState("");
   const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const send = async () => {
-    setMsg("");
-    try { await sendMagicLink(addr.trim()); setMsg(`Check ${addr.trim()} for a sign-in link — open it on this device.`); }
-    catch (e) { setMsg(e instanceof Error ? e.message : "Couldn't send the link."); }
+  const run = async (fn: () => Promise<void>, ok?: string) => {
+    setMsg(""); setBusy(true);
+    try { await fn(); if (ok) setMsg(ok); }
+    catch (e) { setMsg(e instanceof Error ? e.message : "Something went wrong."); }
+    finally { setBusy(false); }
   };
 
   return (
     <Card className="p-5 space-y-3">
-      <SectionTitle>☁️ Cloud sync (Supabase)</SectionTitle>
+      <SectionTitle>☁️ Private cloud sync</SectionTitle>
       {!configured ? (
-        <p className="text-sm text-gray-600">Not configured. Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to enable it — until then everything is saved only in this browser.</p>
+        <p className="text-sm text-gray-600">Not configured. Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to <code>.env.local</code> and restart — until then everything is saved only in this browser.</p>
       ) : !email ? (
         <>
-          <p className="text-sm text-gray-600">Sign in to back up your profiles and sync them across devices. Your data stays on this device until you sign in; once signed in, it is stored in your private Supabase account (only you can read it).</p>
+          <p className="text-sm text-gray-600">Only the two household email addresses can sign in. Your data stays on this device until you do; after that it syncs to your private Supabase project, where only the two of you can read it.</p>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <Input type="email" placeholder="your email" value={addr} onChange={(e) => setAddr(e.target.value)} aria-label="Email" autoComplete="email" />
+            <Input type="password" placeholder="password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Password" autoComplete="current-password"
+              onKeyDown={(e) => e.key === "Enter" && addr && pw && void run(() => signInWithPassword(addr.trim(), pw))} />
+          </div>
           <div className="flex gap-2 flex-wrap">
-            <Input className="flex-1 min-w-[14rem]" type="email" placeholder="you@example.com" value={addr} onChange={(e) => setAddr(e.target.value)} aria-label="Email for sign-in link" />
-            <Button onClick={send} disabled={!addr.includes("@")}>Email me a sign-in link</Button>
+            <Button disabled={busy || !addr.includes("@") || !pw} onClick={() => void run(() => signInWithPassword(addr.trim(), pw))}>Sign in</Button>
+            <Button variant="ghost" disabled={busy || !addr.includes("@")} onClick={() => void run(() => sendMagicLink(addr.trim()), `If ${addr.trim()} is on the household list, a sign-in link is on its way — open it on this device.`)}>Email me a magic link instead</Button>
           </div>
         </>
       ) : (
