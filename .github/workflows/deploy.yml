@@ -1,12 +1,8 @@
-# Builds the Next.js static export (PWA) and publishes it to GitHub Pages on every push to main.
-# Live at: https://oupamunashe.github.io/pregnancy-tracker/
-#
-# One-time setup (repo Settings):
-#   1. Pages → Build and deployment → Source: "GitHub Actions"
-#   2. Secrets and variables → Actions → New repository secret:
-#        NEXT_PUBLIC_SUPABASE_URL        https://gvwwwcqwudzygabzbrea.supabase.co
-#        NEXT_PUBLIC_SUPABASE_ANON_KEY   the "anon public" key (never the service_role key)
-name: Deploy to GitHub Pages
+# Typecheck, test, build and publish to GitHub Pages on every push to main.
+# Live at https://oupamunashe.github.io/pregnancy-tracker/
+# One-time: Settings → Pages → Source: "GitHub Actions"; Settings → Secrets and variables → Actions →
+#   VITE_SUPABASE_URL (https://<project>.supabase.co) and VITE_SUPABASE_ANON_KEY (the anon PUBLIC key, never service_role).
+name: Deploy
 
 on:
   push:
@@ -20,50 +16,52 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Validate Supabase secrets
-        # NEXT_PUBLIC_* values are inlined into the static files at BUILD time. Without valid ones the site would ship
-        # with no login gate or a broken URL ("Failed to fetch") — so fail here, loudly, instead.
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        run: node scripts/verify-supabase-env.mjs
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm test
       - run: npm run typecheck
-      - uses: actions/configure-pages@v5
+      - run: npm test
 
-      - name: Build static export
+      - name: Check the Supabase settings
+        # VITE_* values are inlined at BUILD time — without valid ones the site would ship with no login (or "Failed to fetch").
         env:
-          NEXT_PUBLIC_BASE_PATH: /pregnancy-tracker
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        run: npm run build
-
-      - name: Confirm the Supabase URL was baked into the build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          HOST=$(node -e 'console.log(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL.trim()).host)')
-          grep -rl "$HOST" out/_next/static > /dev/null || { echo "::error::Supabase host not found in the built files"; exit 1; }
-          echo "OK: build points at $HOST"
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::Add the repository secrets VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          node -e '
+            const url = process.env.VITE_SUPABASE_URL, key = process.env.VITE_SUPABASE_ANON_KEY, bad = [];
+            if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(url)) bad.push("VITE_SUPABASE_URL must be exactly https://<project-ref>.supabase.co (no trailing slash, spaces, quotes or /rest/v1 suffix).");
+            const parts = key.split("."); let role = "?", ref = "";
+            try { const p = JSON.parse(Buffer.from(parts[1], "base64url")); role = p.role; ref = p.ref || ""; } catch {}
+            if (role === "service_role") bad.push("VITE_SUPABASE_ANON_KEY is the service_role key — NEVER ship it. Use the anon public key.");
+            else if (parts.length === 3 && role !== "anon") bad.push("VITE_SUPABASE_ANON_KEY is not an anon key.");
+            if (ref && /^https:/.test(url) && new URL(url).hostname.split(".")[0] !== ref) bad.push(`URL points at project "${new URL(url).hostname.split(".")[0]}" but the key belongs to "${ref}".`);
+            if (bad.length) { bad.forEach(b => console.log("::error::" + b)); process.exit(1); }
+            console.log("Supabase settings look right for project " + new URL(url).hostname.split(".")[0]);'
 
-      - run: touch out/.nojekyll
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: out
+          path: dist
 
   deploy:
     needs: build

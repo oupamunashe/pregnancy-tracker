@@ -1,21 +1,13 @@
-# dependencies
 node_modules
-
-# next.js
-.next
-out
-next-env.d.ts
-*.tsbuildinfo
-
-# env files (never commit secrets) — keep the example
+dist
 .env
 .env.*
 !.env.example
-
-# vercel
-.vercel
-
-# testing / logs / OS
-coverage
-npm-debug.log*
+*.local.sql
 .DS_Store
+*.tsbuildinfo
+
+# leftovers from the previous Next.js build
+.next
+out
+next-env.d.ts
