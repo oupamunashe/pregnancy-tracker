@@ -93,3 +93,23 @@ export function nappiesRemaining(stock: { stock: number; at?: number } | undefin
   if (!stock || typeof stock.stock !== 'number') return null;
   return Math.max(0, stock.stock - list.filter(e => e.at >= (stock.at || 0)).length);
 }
+
+/* ---------- care hub ---------- */
+import type { Appointment, Guest } from './types';
+import { diffDays, parseDate } from './gestation';
+/** Appointments not yet completed, soonest first; completed ones, newest first. */
+export const splitAppts = <T extends Appointment>(list: T[]) => ({
+  upcoming: list.filter(a => a.status !== 'Completed').sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))),
+  past: list.filter(a => a.status === 'Completed').sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || ''))),
+});
+/** Questions noted on the most recent completed visit — to ask at the NEXT one. */
+export const carriedQuestions = <T extends Appointment>(list: T[]): string => splitAppts(list).past.find(a => (a.questions || '').trim())?.questions?.trim() || '';
+export const weekAtDate = (lmp: Date, iso: string): number => Math.floor(diffDays(parseDate(iso), lmp) / 7);
+export const daysUntil = (iso: string, today: Date): number => diffDays(parseDate(iso), today);
+
+/* ---------- events ---------- */
+export const rsvpTally = (guests: Guest[]) => {
+  const yes = guests.filter(g => g.rsvp === 'Yes');
+  return { yes: yes.length, no: guests.filter(g => g.rsvp === 'No').length, maybe: guests.filter(g => g.rsvp === 'Maybe').length, pending: guests.filter(g => g.rsvp === 'Pending').length, heads: yes.reduce((s, g) => s + 1 + Math.max(0, g.plus || 0), 0), invited: guests.length };
+};
+export const liveMap = <T>(m: Record<string, T | null> | undefined): (T & { id: string })[] => Object.entries(m || {}).filter(([, v]) => v).map(([id, v]) => ({ id, ...(v as any) }));

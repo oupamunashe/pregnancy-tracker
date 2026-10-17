@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALLOWED_COLLECTIONS, COLLECTIONS, assertCollection } from '../../src/data/adapter';
-import { createProfile, delItem, deleteProfile, listPath, putItem, saveProfile } from '../../src/data/db';
+import { createProfile, delItem, deleteProfile, listPath, putItem, saveNav, saveProfile } from '../../src/data/db';
 import { MemoryAdapter } from '../../src/data/memory';
 import { LIST_KEYS } from '../../src/core/types';
 import { S } from '../../src/core/state';
@@ -18,10 +18,12 @@ describe('collection names (public.docs CHECK constraint)', () => {
     const id = await createProfile({ nickname: 'Test', lmp: '2026-09-17' });         // profile doc + seeded prep/budget/nursery/supplies
     await saveProfile(id, { nickname: 'Renamed' });
     for (const k of LIST_KEYS) { await putItem(id, k, 'x1', { a: 1 }); await delItem(id, k, 'x1'); }   // every list the UI can write
+    await saveNav('P', ['kicks', 'care']);                                              // menu preference → config/preg-nav
     await deleteProfile(id);
     const paths = db.writes.map(w => w[1] as string);
     expect(paths.length).toBeGreaterThan(30);
-    expect(new Set(paths.map(collectionOf))).toEqual(new Set(['gestations', 'preg_lists']));
+    expect(new Set(paths.map(collectionOf))).toEqual(new Set(['gestations', 'preg_lists', 'config']));
+    expect(paths.filter(p => collectionOf(p) === 'config')).toEqual(['config/preg-nav']);   // never touches Pa-Nashe's config/main etc.
     paths.forEach(p => expect(ALLOWED_COLLECTIONS).toContain(collectionOf(p)));
   });
 

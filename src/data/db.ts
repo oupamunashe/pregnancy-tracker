@@ -8,7 +8,7 @@ import { hooks } from '../core/hooks';
 import { S, lsSet } from '../core/state';
 import { LIST_KEYS, type ListKey, type Profile, type WithId } from '../core/types';
 
-import { assertCollection } from './adapter';
+import { NAV_DOC, assertCollection } from './adapter';
 
 const queues: Record<string, Promise<unknown>> = {};
 /** Writes to the same document run one after another. */
@@ -65,6 +65,9 @@ export async function deleteProfile(id: string) {
   await dbWrite('gestations/' + id, 'delete');
 }
 
+/** Saves ONE person's menu (config/preg-nav → { P: { tabs }, M: { tabs } }); each phone only ever writes its own key. */
+export const saveNav = (who: string, tabs: string[]) => dbWrite(NAV_DOC, 'update', { [who]: { tabs } });
+
 /** Subscribes the in-memory state to both collections (live: every change from either phone arrives here). */
 export function subscribe() {
   const db = S.db!;
@@ -74,6 +77,11 @@ export function subscribe() {
     snap.docs.forEach(d => { if (d.exists) next[d.id] = d.data(); });
     S.profiles = next; S.loaded.profiles = true; S.ver++; hooks.scheduleRender();
   }, onErr('profiles'));
+  db.collection('config').onSnapshot(snap => {
+    const next: Record<string, any> = {};
+    snap.docs.forEach(d => { if (d.exists) next[d.id] = d.data(); });
+    S.cfg = next; S.loaded.config = true; S.ver++; hooks.scheduleRender();
+  }, onErr('config'));
   db.collection('preg_lists').onSnapshot(snap => {
     const next: Record<string, any> = {};
     snap.docs.forEach(d => { if (d.exists) next[d.id] = d.data(); });

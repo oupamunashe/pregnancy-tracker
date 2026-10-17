@@ -87,3 +87,14 @@ export const SUPPLY_SEED: [string, string, number][] = [
   ['Out & about', 'Car seat (installed)', 1], ['Out & about', 'Pram / carrier', 1], ['Out & about', 'Nappy bag', 1],
 ];
 export const NAME_ORIGINS = ['African', 'English', 'Hebrew', 'Greek', 'Latin', 'Irish', 'Italian', 'Other'];
+
+/* ---------- care hub + events ---------- */
+export const PROVIDER_ROLES = ['OB/GYN', 'GP', 'Midwife', 'Doula', 'Hospital', 'Other'] as const;
+export const APPT_TYPES = ['Prenatal visit', 'Ultrasound', 'Blood test', 'Other'] as const;
+export const SHOOT_KINDS: [string, string, string][] = [['maternity', '🤰', 'Maternity'], ['birth', '👶', 'Birth'], ['newborn', '🍼', 'Newborn']];
+export const SHOOT_STATUSES = ['Enquiry', 'Quoted', 'Booked', 'Completed', 'Declined'] as const;
+export const RSVPS = ['Pending', 'Yes', 'No', 'Maybe'] as const;
+export const EVENT_KINDS: Record<string, { icon: string; label: string; tasks: string[] }> = {
+  shower: { icon: '🎀', label: 'Baby shower', tasks: ['Pick a date & venue', 'Make the guest list', 'Send invitations', 'Share the registry link', 'Order the cake / food', 'Plan games & decor', 'Confirm RSVPs', 'Buy thank-you gifts'] },
+  reveal: { icon: '💙', label: 'Gender reveal', tasks: ['Choose the reveal idea', 'Pick a date & venue', 'Make the guest list', 'Send invitations', 'Sealed envelope to the baker / supplier', 'Order decor & props', 'Plan the photographer / video', 'Confirm RSVPs'] },
+};

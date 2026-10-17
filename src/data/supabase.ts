@@ -7,7 +7,7 @@
      visible again. Version numbers stop an older copy from replacing a newer one.
    - Only this app's collections are fetched/applied, so rows belonging to other apps in the same table are ignored. */
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
-import { COLLECTIONS, assertCollection, type Collection, type DocSnap, type DocStore, type QuerySnap, type StoreStatus, type Unsub } from './adapter';
+import { COLLECTIONS, CONFIG_PREFIX, assertCollection, ownsPath, type Collection, type DocSnap, type DocStore, type QuerySnap, type StoreStatus, type Unsub } from './adapter';
 import { clone, merged } from './merge';
 import type { LocalStore, OutboxEntry } from './offline';
 
@@ -135,8 +135,14 @@ export class SupabaseAdapter implements DocStore {
     if (this.stopped) return false;
     const t0 = Date.now();
     let res: any;
-    try { res = await this.sb.from('docs').select('collection,id,data,version').in('collection', COLLECTIONS); }
-    catch (e) { res = { error: e }; }
+    try {
+      const own = COLLECTIONS.filter(c => c !== 'config');
+      const [a, b] = await Promise.all([
+        this.sb.from('docs').select('collection,id,data,version').in('collection', own),
+        this.sb.from('docs').select('collection,id,data,version').eq('collection', 'config').like('id', CONFIG_PREFIX + '%'),   // only this app's config docs
+      ]);
+      res = a.error ? a : b.error ? b : { data: [...(a.data as any[]), ...(b.data as any[])], error: null };
+    } catch (e) { res = { error: e }; }
     if (res.error) { if (isTransient(res.error, res.status)) this.setOnline(false); else console.warn('fetch', res.error); return false; }
     this.setOnline(true);
     const seen = new Set<string>();
@@ -163,8 +169,9 @@ export class SupabaseAdapter implements DocStore {
     this.server.set(path, doc); this.persist(path, doc); this.queueNotify(colOf(path));
   }
   private onChange(p: any) {
-    const col = (p.new?.collection ?? p.old?.collection) as string | undefined;
-    if (col && !mine(col)) return;                          // another app's document
+    const col = (p.new?.collection ?? p.old?.collection) as string | undefined, rid = (p.new?.id ?? p.old?.id) as string | undefined;
+    if (col && !mine(col)) return;                          // another app's collection
+    if (col === 'config' && !String(rid ?? '').startsWith(CONFIG_PREFIX)) return;   // another app's config document
     if (p.eventType === 'DELETE') {
       if (!p.old?.collection) { this.fetchAll(); return; }
       const path = p.old.collection + '/' + p.old.id;
@@ -173,6 +180,7 @@ export class SupabaseAdapter implements DocStore {
     }
     const row = p.new || {};
     const path = row.collection + '/' + row.id;
+    if (!ownsPath(path)) return;
     if (row.data === undefined || row.version === undefined) { this.fetchDoc(path); return; }   // payload trimmed — fetch it
     this.applyServer(path, row.data, row.version);
   }

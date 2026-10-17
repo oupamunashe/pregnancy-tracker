@@ -4,9 +4,14 @@ export interface QuerySnap { docs: DocSnap[] }
 export type Unsub = () => void;
 /** Every value public.docs.collection accepts in this Supabase project (a CHECK constraint rejects anything else). */
 export const ALLOWED_COLLECTIONS = ['config', 'months', 'milestones', 'logs', 'tools', 'prep', 'preg_lists', 'gestations'] as const;
-/** The two collections THIS app owns: pregnancy profiles, and their lists (symptoms, kicks, budget, names, …). */
-export type Collection = 'gestations' | 'preg_lists';
-export const COLLECTIONS: Collection[] = ['gestations', 'preg_lists'];
+/** The collections THIS app reads/writes: profiles, their lists (symptoms, kicks, budget, names, …) and its menu preferences. */
+export type Collection = 'gestations' | 'preg_lists' | 'config';
+export const COLLECTIONS: Collection[] = ['gestations', 'preg_lists', 'config'];
+/** `config` is shared with the Pa-Nashe tracker (config/main, config/catalog …), so this app only touches documents with this id prefix. */
+export const CONFIG_PREFIX = 'preg-';
+export const NAV_DOC = 'config/' + CONFIG_PREFIX + 'nav';
+/** Is this a document this app owns? (config docs belonging to another app are never fetched, cached or applied.) */
+export const ownsPath = (path: string): boolean => { const [c, ...rest] = path.split('/'); return COLLECTIONS.includes(c as Collection) && (c !== 'config' || rest.join('/').startsWith(CONFIG_PREFIX)); };
 
 /** Throws a clear error BEFORE any network call if a path's collection isn't one the database accepts. */
 export function assertCollection(path: string): void {

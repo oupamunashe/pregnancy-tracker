@@ -18,7 +18,7 @@ import { sheetPassword, showMessage, showPrivate, showSignIn } from './ui/signin
 
 function stillConnecting() {
   setTimeout(() => {
-    if (S.loaded.profiles && S.loaded.lists) return;
+    if (S.loaded.profiles && S.loaded.lists && S.loaded.config) return;
     const m = document.getElementById('main');
     if (m) m.innerHTML = '<div class="loading"><div><h2>Still connecting…</h2><p class="muted">Your data is taking longer than usual to load. Check your connection; the page fills in as soon as it arrives.</p></div></div>';
   }, 15000);
@@ -44,6 +44,12 @@ function startDemo() {
     'preg_lists/demo~supplies': { items: Object.fromEntries(SUPPLY_SEED.map(([group, text, need], i) => ['s' + i, { group, text, need, have: i % 3 === 0 ? need : i % 3 === 1 ? Math.floor(need / 2) : 0 }])) },
     'preg_lists/demo~diapers': { items: { _stock: { stock: 60, perPack: 50, at: now - 2 * 86400000, weight: '5.5' }, ...Object.fromEntries(Array.from({ length: 26 }, (_, i) => ['e' + i, { at: now - Math.floor(i / 8) * 86400000 - (i % 8) * 3 * 3600000, kind: ['wet', 'dirty', 'both'][i % 3], by: 'M' }])) } },
     'preg_lists/demo~photos': { items: { p1: { kind: 'bump', week: 12, d: '2026-12-10', caption: '12 weeks', url: 'https://picsum.photos/seed/bump12/300/400', by: 'P', at: now }, p2: { kind: 'scan', week: 12, d: '2026-12-10', caption: 'NT scan', url: 'https://picsum.photos/seed/scan12/300/400', by: 'M', at: now - 1 } } },
+    'preg_lists/demo~providers': { items: { v1: { name: 'Dr Naledi Mokoena', role: 'OB/GYN', phone: '+27 11 555 0101', email: 'rooms@example.com', address: '12 Health Rd, Sandton', emergency: 'After hours: 082 555 0199 — call before going to hospital', at: now }, v2: { name: 'Sunninghill Hospital', role: 'Hospital', phone: '+27 11 555 0200', address: 'Witkoppen Rd, Sunninghill', emergency: 'Maternity ward, 3rd floor — enter via casualty after 20:00', at: now - 1 }, v3: { name: 'Sipho (Doula)', role: 'Doula', phone: '+27 82 555 0123', at: now - 2 } } },
+    'preg_lists/demo~appointments': { items: { a1: { title: '12-week scan', type: 'Ultrasound', providerId: 'v1', date: '2026-12-10', time: '09:30', status: 'Completed', vitals: { bp: '118/74', weight: 62.4 }, notes: 'All good, heartbeat strong.', questions: 'Ask about iron supplements and travel in 2nd trimester', by: 'P', at: now - 5 }, a2: { title: 'Routine check-up', type: 'Prenatal visit', providerId: 'v1', date: '2027-01-14', time: '10:00', status: 'Scheduled', by: 'P', at: now - 4 }, a3: { title: 'Glucose tolerance test', type: 'Blood test', date: '2027-03-04', time: '07:30', status: 'Scheduled', at: now - 3 } } },
+    'preg_lists/demo~photographers': { items: { s1: { kind: 'maternity', name: 'Golden Hour Studio', quote: 3800, deposit: 1000, status: 'Booked', contact: '@goldenhour', portfolio: 'https://example.com', signed: true, shootDate: '2027-03-20', shootTime: '16:00', location: 'Botanical Gardens', contract: 'Cancel 7 days prior; 30 edited images in 14 days', at: now }, s2: { kind: 'newborn', name: 'Tiny Toes Photography', quote: 4500, status: 'Quoted', at: now - 1 } } },
+    'preg_lists/demo~events': { items: { e1: { kind: 'shower', title: 'Baby shower at Gran’s', date: '2027-04-10', time: '14:00', venue: 'Gran’s garden', budget: 6000, at: now, tasks: { t0: { text: 'Pick a date & venue', done: true }, t1: { text: 'Send invitations', done: false }, t2: { text: 'Order the cake', done: false } }, guests: { g1: { name: 'Aunty Thandi', contact: '082 555 0111', rsvp: 'Yes', plus: 1 }, g2: { name: 'Cousin Sam', rsvp: 'Maybe', plus: 0 }, g3: { name: 'Naledi', rsvp: 'Pending', plus: 0 } }, expenses: { x1: { what: 'Cake deposit', amt: 450 }, x2: { what: 'Decor', amt: 900 } }, links: { l1: { label: 'Takealot registry', url: 'https://www.takealot.com' } } } } },
+    'config/preg-nav': { P: { tabs: ['care', 'kicks', 'contractions', 'weeks', 'events', 'budget', 'names'] } },
+    'config/main': { note: 'a Pa-Nashe document — must never show up here' },
     'preg_lists/demo~contractions': { items: Object.fromEntries(Array.from({ length: 5 }, (_, i) => ['c' + i, { start: now - (5 - i) * 6 * M, end: now - (5 - i) * 6 * M + 55000, by: 'P' }])) },
   });
   S.me = (q.get('me') as Who) || S.me || 'P';

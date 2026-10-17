@@ -5,7 +5,9 @@ import { esc } from '../../core/format';
 import { longDate, trimesterOf } from '../../core/gestation';
 import { S } from '../../core/state';
 import { items } from '../../data/db';
-import { activeKick, KICK_GOAL, kickCount } from '../../core/calc';
+import { activeKick, KICK_GOAL, kickCount, splitAppts, daysUntil, weekAtDate } from '../../core/calc';
+import { shortDate, parseDate } from '../../core/gestation';
+import type { Appointment } from '../../core/types';
 
 const R = 52, C = 2 * Math.PI * R;
 export function wheel(c: Ctx) {
@@ -20,7 +22,7 @@ export function viewHome(): string {
   const weekly = S.lists[c.id + '~weekly']?.items || {};
   const open = WEEK_TASKS.filter(t => t.week >= Math.max(0, c.ga.weeks - 1) && !weekly[t.key]?.done).slice(0, 4);
   const kick = activeKick(items(c.id, 'kicks')), kicks = kick ? kickCount(kick) : 0;
-  const cd = c.daysToGo;
+  const cd = c.daysToGo, nextAppt = splitAppts(items<Appointment>(c.id, 'appointments')).upcoming[0];
   return `<section class="home">
     <div class="panel hero">${wheel(c)}
       <div class="hero-side">
@@ -28,6 +30,7 @@ export function viewHome(): string {
         <div class="kv"><span>${cd >= 0 ? 'Countdown' : 'Past due by'}</span><b>${cd >= 0 ? `${cd} days` : `${-cd} days`}</b>${cd >= 0 ? `<small>${Math.floor(cd / 7)} weeks ${cd % 7} days</small>` : ''}</div>
         <div class="kv"><span>${esc(c.p.nickname)}</span><small>LMP ${esc(longDate(c.lmp))}</small></div>
       </div></div>
+    ${nextAppt ? `<button class="panel nextappt" data-a="nav" data-v="care"><div class="eyebrow">Next appointment</div><b>${esc(nextAppt.title)}</b> <span class="chip">${(() => { const d = daysUntil(nextAppt.date, c.today); return d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : d > 0 ? `in ${d} days` : 'overdue'; })()}</span><div class="muted small">${esc(shortDate(parseDate(nextAppt.date)))}${nextAppt.time ? ' · ' + esc(nextAppt.time) : ''} · Week ${weekAtDate(c.lmp, nextAppt.date)}</div></button>` : ''}
     <div class="grid2">
       <div class="panel"><div class="eyebrow">Week ${info.week}</div><div class="emoji" aria-hidden="true">${info.emoji}</div>
         <p>Baby is about the size of a <b>${esc(info.size)}</b>.</p><p class="muted">${esc(info.note)}</p>

@@ -28,11 +28,12 @@ export class FakeSupabase {
     const self = this;
     return {
       select: () => {
-        const f: any = { _c: null as string[] | null, _eq: {} as Record<string, string> };
+        const f: any = { _c: null as string[] | null, _eq: {} as Record<string, string>, _like: null as [string, string] | null };
         f.in = (_col: string, vals: string[]) => { f._c = vals; return f; };
         f.eq = (k: string, v: string) => { f._eq[k] = v; return f; };
+        f.like = (k: string, pat: string) => { f._like = [k, pat]; return f; };
         const run = () => self.net(() => {
-          const out = [...self.rows.values()].filter(r => (!f._c || f._c.includes(r.collection)) && Object.entries(f._eq).every(([k, v]) => (r as any)[k] === v));
+          const out = [...self.rows.values()].filter(r => (!f._c || f._c.includes(r.collection)) && Object.entries(f._eq).every(([k, v]) => (r as any)[k] === v) && (!f._like || String((r as any)[f._like[0]]).startsWith(f._like[1].replace(/%$/, ''))));
           return { data: clone(out), error: null };
         });
         f.maybeSingle = () => run().then(r => ({ data: r.data[0] ?? null, error: null }));

@@ -4,17 +4,19 @@ import { esc } from '../../core/format';
 import { longDate, parseDate } from '../../core/gestation';
 import { computeEdd } from '../../core/gestation';
 import { S, pname, profileIds } from '../../core/state';
+import { byId, layout, tabsFor } from '../../core/nav';
 import { session } from '../../auth/session';
 import { isUrlIcon } from '../parts';
 
 export const ICONS = ['🫐', '🥜', '🌸', '🥑', '👶', '🍓', '🥭', '🍑', '🌱', '🧸', '⭐', '💛'];
 
 export function viewMore(): string {
-  const tile = (v: string, i: string, n: string) => `<button class="btn big-btn" data-a="nav" data-v="${v}"><span aria-hidden="true">${i}</span>${n}</button>`;
+  const lay = layout(tabsFor(S.cfg, S.me));
+  const tile = (m: { id: string; icon: string; label: string }) => `<button class="btn big-btn" data-a="nav" data-v="${m.id}"><span aria-hidden="true">${m.icon}</span>${m.label}</button>`;
   return `<section><h1>More</h1>
-    <div class="eyebrow">Track</div><div class="menu">${tile('symptoms', '📝', 'Symptom logger')}${tile('prep', '🧳', 'Prep checklists')}${tile('photos', '📸', 'Photo milestones')}</div>
-    <div class="eyebrow" style="margin-top:14px">Plan</div><div class="menu">${tile('budget', '💰', 'Budget')}${tile('nursery', '🛏', 'Nursery')}${tile('supplies', '🧷', 'Supplies & diapers')}${tile('daycare', '🏫', 'Daycare & caregivers')}${tile('names', '👶', 'Baby names')}</div>
-    <div class="eyebrow" style="margin-top:14px">App</div><div class="menu">${tile('settings', '⚙️', 'Settings')}</div></section>`;
+    ${lay.overflow.length ? `<div class="menu">${lay.overflow.map(id => tile(byId(id)!)).join('')}</div>` : '<div class="panel muted">Everything is in your tab bar — nothing hidden here.</div>'}
+    <div class="panel" style="margin-top:14px"><div class="row-between"><div><b>${S.me ? esc(pname(S.me)) + '’s menu' : 'Your menu'}</b><div class="small muted">In your tab bar: ${lay.tabs.map(id => esc(byId(id)!.short)).join(' · ')}</div></div>
+      <button class="btn" data-a="nav-open">🧩 Customize menu</button></div></div></section>`;
 }
 
 export const iconHtml = (icon: string | undefined, size = 28) => isUrlIcon(icon) ? `<img src="${esc(icon)}" alt="" width="${size}" height="${size}" class="avatar-img" referrerpolicy="no-referrer">` : `<span aria-hidden="true">${esc(icon || '🌸')}</span>`;
@@ -38,6 +40,7 @@ export function viewSettings(): string {
         ${i !== c.id ? `<button class="btn sm" data-a="switch-profile" data-id="${i}">Switch</button>` : ''}
         <button class="btn sm ghost" data-a="archive-profile" data-id="${i}">${p.status === 'archived' ? 'Unarchive' : 'Archive'}</button>
         <button class="btn sm ghost" data-a="delete-profile" data-id="${i}">Delete</button></li>`; }).join('')}</ul></div>
+    <div class="panel"><div class="row-between"><div><div class="eyebrow">My menu</div><div class="small muted">Choose which 7 modules sit in your tab bar and their order. Piepie and Munny each keep their own, on every device.</div></div><button class="btn" data-a="nav-open">🧩 Customize</button></div></div>
     <div class="panel"><div class="eyebrow">This device</div>
       <div class="field"><label>Who is using it?</label><div class="chips">${(['P', 'M'] as const).map(w => `<button class="chip-btn ${S.me === w ? 'on' : ''}" data-a="who" data-w="${w}">${pname(w)}</button>`).join('')}</div></div>
       <p class="small muted">Signed in as <b>${esc(session.email || 'demo mode')}</b>. Changes sync live between both phones and are saved on this device when offline.</p>

@@ -6,15 +6,16 @@ import { FakeSupabase } from '../helpers/fake-supabase';
 
 const tick = (ms = 30) => new Promise(r => setTimeout(r, ms));
 let fake: FakeSupabase, db: SupabaseAdapter, local: LocalStore, uidn = 0;
-const snaps: Record<string, any[]> = { gestations: [], preg_lists: [] };
+const snaps: Record<string, any[]> = { gestations: [], preg_lists: [], config: [] };
 const latest = (c: string) => snaps[c][snaps[c].length - 1];
 
 beforeEach(async () => {
   fake = new FakeSupabase(); local = new LocalStore('user-' + ++uidn);
-  snaps.gestations = []; snaps.preg_lists = [];
+  snaps.gestations = []; snaps.preg_lists = []; snaps.config = [];
   db = new SupabaseAdapter(fake as any, local);
   db.collection('gestations').onSnapshot(s => snaps.gestations.push(s));
   db.collection('preg_lists').onSnapshot(s => snaps.preg_lists.push(s));
+  db.collection('config').onSnapshot(s => snaps.config.push(s));
   await db.start(); await tick();
 });
 afterEach(() => db.stop());
@@ -87,5 +88,26 @@ describe('SupabaseAdapter', () => {
   it('refuses to queue a write to a collection the database would reject', async () => {
     await expect(db.doc('preg_profiles/p1').update({ nickname: 'x' })).rejects.toMatchObject({ code: 'invalid_collection' });
     expect(db.pendingCount).toBe(0); expect(fake.calls).toEqual([]);
+  });
+
+  it('syncs the menu preference in config/preg-nav, per person, and ignores the Pa-Nashe tracker’s config documents', async () => {
+    await fake.remoteMerge('config', 'main', { people: { P: { n: 'Piepie' } } });          // a Pa-Nashe document in the same collection
+    await fake.remoteMerge('config', 'catalog', { items: {} });
+    await db.doc('config/preg-nav').update({ P: { tabs: ['kicks', 'care'] } });             // Piepie saves her menu
+    await tick(40);
+    await fake.remoteMerge('config', 'preg-nav', { M: { tabs: ['budget'] } });              // Munny saves his on another phone
+    await tick(60);
+    const docs = latest('config').docs;
+    expect(docs.map((d: any) => d.id)).toEqual(['preg-nav']);                                 // Pa-Nashe's main/catalog never appear
+    expect(docs[0].data()).toEqual({ P: { tabs: ['kicks', 'care'] }, M: { tabs: ['budget'] } });
+  });
+
+  it('on a fresh start only this app’s config documents are fetched', async () => {
+    await fake.remoteMerge('config', 'main', { secret: 'finances' });
+    await fake.remoteMerge('config', 'preg-nav', { P: { tabs: ['weeks'] } });
+    const fresh = new SupabaseAdapter(fake as any, new LocalStore('user-fresh-' + ++uidn));
+    let seen: string[] = []; fresh.collection('config').onSnapshot(s => { seen = s.docs.map(d => d.id); });
+    await fresh.start(); await tick(60);
+    expect(seen).toEqual(['preg-nav']); fresh.stop();
   });
 });

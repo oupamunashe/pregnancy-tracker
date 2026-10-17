@@ -5,7 +5,7 @@ Pa-Nashe tracker: Supabase Auth (email + password) → `public.members` allow-li
 an IndexedDB **outbox** for offline edits, and a **Realtime** channel so both phones see each other's changes live.
 
 **Views:** Home (progress wheel, countdown) · Weekly milestones · Symptom logger · Kick counter · Contraction timer (5-1-1 guide) ·
-Prep checklists (hospital bags ×3, admin) · **Budget** · **Baby names** (each partner votes + hearts on their own phone; both hearts = match) · **Nursery** (planner + vision board) · **Photo milestones** (bump + scans, private bucket) · **Daycare & caregivers** (comparison, ratings, visit log) · **Supplies & diapers** (needs list, diaper log, nappy stock forecast, SA size calculator) · Settings.
+Prep checklists (hospital bags ×3, admin) · **Budget** · **Baby names** (each partner votes + hearts on their own phone; both hearts = match) · **Nursery** (planner + vision board) · **Photo milestones** (bump + scans, private bucket) · **Daycare & caregivers** (comparison, ratings, visit log) · **Supplies & diapers** (needs list, diaper log, nappy stock forecast, SA size calculator) · **Medical care** (providers + appointment log with vitals, notes and carried-over questions) · **Events & photography** (baby shower / gender reveal planner with RSVP guest list, budget, tasks and registry links; photographer directory for maternity, birth and newborn shoots) · Settings · **Customizable menu** (each partner picks and orders up to 7 modules for the tab bar; the rest live in More).
 
 ## Layout
 ```
@@ -27,7 +27,7 @@ tests/unit/             vitest: engine, merge, calc, SupabaseAdapter (offline ou
 | `preg_lists` | `<profileId>~<weekly\|symptoms\|kicks\|contractions\|prep\|budget\|names\|nursery\|vision\|photos\|daycares\|supplies\|diapers>` | `{ items: { <itemId>: item \| null } }` |
 
 Lists are **maps keyed by item id**, not arrays: `doc_merge` merges objects key by key but replaces arrays, so two phones adding
-items (or tapping kicks) at once never overwrite each other. `null` is a deletion tombstone. Anything two people edit at once is stored per person (`votes: { P, M }`, `fav: { P, M }`, `ratings: { P, M }`) so each phone writes only its own key. Photos live in the private `files` storage bucket (members-only, created by Pa-Nashe's 0001); documents keep just the file id. The diaper log keeps its stock settings in a reserved `_stock` item.
+items (or tapping kicks) at once never overwrite each other. `null` is a deletion tombstone. Anything two people edit at once is stored per person (`votes: { P, M }`, `fav: { P, M }`, `ratings: { P, M }`) so each phone writes only its own key. **Navigation prefs** live in `config/preg-nav` as `{ P: { tabs: [...] }, M: { tabs: [...] } }` — one key per person, so each phone writes only its own menu. `config` is shared with the Pa-Nashe tracker, so this app only ever fetches, caches or applies `config` documents whose id starts with `preg-`. New lists: `providers`, `appointments`, `photographers`, `events` (events keep their guests, tasks, expenses and links as nested maps). Photos live in the private `files` storage bucket (members-only, created by Pa-Nashe's 0001); documents keep just the file id. The diaper log keeps its stock settings in a reserved `_stock` item.
 
 ## Setup
 1. Supabase: Pa-Nashe `0001_init.sql` already applied (members, docs, doc_merge, Realtime) → run `supabase/migrations/0003_pregnancy_collections.sql` in the SQL editor.

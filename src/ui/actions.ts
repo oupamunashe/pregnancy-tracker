@@ -9,13 +9,18 @@ import type { Contraction, DiaperEntry, KickSession, ListKey, Who } from '../cor
 import { nappiesRemaining } from '../core/calc';
 import { placeholderImage } from '../core/diaper';
 import { shrinkImage } from './image';
-import { createProfile, delItem, deleteProfile, items, putItem, saveProfile, seedBudget, seedNursery, seedSupplies, setActive } from '../data/db';
+import { createProfile, delItem, deleteProfile, items, putItem, saveNav, saveProfile, seedBudget, seedNursery, seedSupplies, setActive } from '../data/db';
+import { EVENT_KINDS } from '../core/content';
+import { addTab, moveTab, removeTab, sanitizeTabs, DEFAULT_TABS } from '../core/nav';
+import { refreshNavSheet, sheetNav } from './navsheet';
 import { sheetPassword } from './signin';
 import { closeSheet, openSheet, toast, val, $, $$ } from './sheet';
 import { render } from './shell';
 import { sheetSymptomBody } from './views/symptoms';
 
 const pid = () => ctx()!.id;
+/** "a.b.c" + v → { a: { b: { c: v } } } so doc_merge changes just that one leaf. */
+const nest = (path: string, v: any) => path.split('.').reduceRight((acc: any, k) => ({ [k]: acc }), v);
 const fail = (e: any) => { if (e?.message !== 'offline' && e?.message !== 'readonly') console.warn(e); };
 
 export function go(view: string) { S.ui.view = view; S.ui.scrollTop = true; render(); }
@@ -95,8 +100,9 @@ async function act(a: string, el: HTMLElement, e: Event) {
     case 'edit': {
       const t = el as HTMLInputElement; let v: any = t.value;
       if (d.t === 'num') { v = v === '' ? null : Number(v); if (v !== null && Number.isNaN(v)) return; }
-      return void putItem(pid(), d.list as ListKey, d.id!, { [d.f!]: v }).catch(fail);
+      return void putItem(pid(), d.list as ListKey, d.id!, nest(d.f!, v)).catch(fail);   // dotted paths (vitals.bp, guests.<id>.rsvp) become nested merges
     }
+    case 'nested-del': return void putItem(pid(), d.list as ListKey, d.id!, nest(d.path!, null)).catch(fail);
     case 'del': return void delItem(pid(), d.list as ListKey, d.id!).catch(fail);
     case 'seed': return void (d.what === 'budget' ? seedBudget(pid()) : d.what === 'nursery' ? seedNursery(pid()) : seedSupplies(pid())).catch(fail);
 
@@ -187,6 +193,78 @@ async function act(a: string, el: HTMLElement, e: Event) {
       return void putItem(pid(), 'diapers', '_stock', { stock: left + per, perPack: per, at: Date.now() }).catch(fail);
     }
     case 'diaper-weight': return void putItem(pid(), 'diapers', '_stock', { weight: (el as HTMLInputElement).value.trim() }).catch(fail);
+
+    /* medical care hub */
+    case 'care-tab': S.ui.careTab = d.t!; return render();
+    case 'provider-add': {
+      e.preventDefault();
+      const name = val(document, '#pv-name'); if (!name) return;
+      await putItem(pid(), 'providers', uid(), { name, role: val(document, '#pv-role') || 'Other', at: Date.now() }).catch(fail);
+      ($('#pv-name') as HTMLInputElement).value = ''; return;
+    }
+    case 'appt-add': {
+      e.preventDefault();
+      const title = val(document, '#ap-title'), date = val(document, '#ap-date'); if (!title) return;
+      if (!isValidISO(date)) return toast('Pick a valid date.', 'bad');
+      const id = uid();
+      await putItem(pid(), 'appointments', id, { title, type: val(document, '#ap-type'), providerId: val(document, '#ap-prov'), date, time: val(document, '#ap-time'), status: 'Scheduled', by: S.me, at: Date.now() }).catch(fail);
+      ($('#ap-title') as HTMLInputElement).value = ''; return toast('Appointment scheduled');
+    }
+    case 'appt-open': S.ui.openAppt = S.ui.openAppt === d.id ? null : d.id; return render();
+    case 'appt-status': { await putItem(pid(), 'appointments', d.id!, { status: d.s }).catch(fail); if (d.s === 'Completed') { S.ui.openAppt = d.id; toast('Marked completed — add vitals, notes and questions for next time'); } return render(); }
+
+    /* events & photography */
+    case 'events-tab': S.ui.eventsTab = d.t!; return render();
+    case 'event-open': S.ui.openEvent = S.ui.openEvent === d.id ? null : d.id!; return render();
+    case 'event-add': {
+      e.preventDefault();
+      const title = val(document, '#ev-title'); if (!title) return;
+      const kind = val(document, '#ev-kind') === 'reveal' ? 'reveal' : 'shower', id = uid(), date = val(document, '#ev-date');
+      await putItem(pid(), 'events', id, { kind, title, date: date || '', budget: null, at: Date.now(), tasks: Object.fromEntries(EVENT_KINDS[kind].tasks.map((text, i) => ['t' + i, { text, done: false }])) }).catch(fail);
+      S.ui.openEvent = id; ($('#ev-title') as HTMLInputElement).value = ''; return render();
+    }
+    case 'event-task': return void putItem(pid(), 'events', d.id!, nest(`tasks.${d.t}.done`, (el as HTMLInputElement).checked)).catch(fail);
+    case 'event-task-add': { e.preventDefault(); const text = val(document, '#et-' + d.id); if (!text) return; await putItem(pid(), 'events', d.id!, { tasks: { [uid()]: { text, done: false } } }).catch(fail); ($('#et-' + d.id) as HTMLInputElement).value = ''; return; }
+    case 'event-guest-add': {
+      e.preventDefault();
+      const name = val(document, '#eg-name-' + d.id); if (!name) return;
+      await putItem(pid(), 'events', d.id!, { guests: { [uid()]: { name, contact: val(document, '#eg-contact-' + d.id), rsvp: 'Pending', plus: 0 } } }).catch(fail);
+      ($('#eg-name-' + d.id) as HTMLInputElement).value = ''; ($('#eg-contact-' + d.id) as HTMLInputElement).value = ''; return;
+    }
+    case 'event-expense-add': {
+      e.preventDefault();
+      const what = val(document, '#ex-what-' + d.id), amt = Number(val(document, '#ex-amt-' + d.id)); if (!what || !(amt >= 0)) return toast('Add what it was and the amount.', 'bad');
+      await putItem(pid(), 'events', d.id!, { expenses: { [uid()]: { what, amt } } }).catch(fail);
+      ($('#ex-what-' + d.id) as HTMLInputElement).value = ''; ($('#ex-amt-' + d.id) as HTMLInputElement).value = ''; return;
+    }
+    case 'event-link-add': {
+      e.preventDefault();
+      const url = val(document, '#el-url-' + d.id), label = val(document, '#el-label-' + d.id) || 'Registry';
+      if (!/^https?:\/\//i.test(url)) return toast('Paste a full link starting with https://', 'bad');
+      await putItem(pid(), 'events', d.id!, { links: { [uid()]: { label, url } } }).catch(fail);
+      ($('#el-url-' + d.id) as HTMLInputElement).value = ''; ($('#el-label-' + d.id) as HTMLInputElement).value = ''; return;
+    }
+    case 'shoot-kind': S.ui.shootKind = d.k!; return render();
+    case 'shoot-add': {
+      e.preventDefault();
+      const name = val(document, '#sh-name'); if (!name) return;
+      await putItem(pid(), 'photographers', uid(), { kind: val(document, '#sh-kind'), name, quote: Number(val(document, '#sh-quote')) || null, status: 'Enquiry', at: Date.now() }).catch(fail);
+      ($('#sh-name') as HTMLInputElement).value = ''; ($('#sh-quote') as HTMLInputElement).value = ''; return;
+    }
+    case 'shoot-signed': return void putItem(pid(), 'photographers', d.id!, { signed: (el as HTMLInputElement).checked }).catch(fail);
+
+    /* customizable navigation (config/preg-nav, one key per person) */
+    case 'nav-open': return sheetNav();
+    case 'nav-add': { const r = addTab(S.ui.navDraft || [], d.id!); if (!r.ok) return toast(r.error, 'bad'); S.ui.navDraft = r.tabs; return refreshNavSheet(); }
+    case 'nav-remove': S.ui.navDraft = removeTab(S.ui.navDraft || [], d.id!); return refreshNavSheet();
+    case 'nav-up': S.ui.navDraft = moveTab(S.ui.navDraft || [], d.id!, -1); return refreshNavSheet();
+    case 'nav-down': S.ui.navDraft = moveTab(S.ui.navDraft || [], d.id!, 1); return refreshNavSheet();
+    case 'nav-reset': S.ui.navDraft = [...DEFAULT_TABS]; return refreshNavSheet();
+    case 'nav-save': {
+      if (!S.me) return toast('Choose who you are in Settings first.', 'bad');
+      const tabs = sanitizeTabs(S.ui.navDraft); closeSheet();
+      await saveNav(S.me, tabs).catch(fail); toast(`${pname(S.me)}’s menu saved`); return render();
+    }
   }
 }
 

@@ -5,7 +5,10 @@ import { hooks } from '../core/hooks';
 import { S, activeProfile } from '../core/state';
 import type { StoreStatus } from '../data/adapter';
 import { $, $$, toast } from './sheet';
+import { layout, tabsFor, byId } from '../core/nav';
 import { viewBudget } from './views/budget';
+import { viewCare } from './views/care';
+import { viewEvents } from './views/events';
 import { viewContractions } from './views/contractions';
 import { viewDaycare } from './views/daycare';
 import { viewNames } from './views/names';
@@ -19,22 +22,32 @@ import { iconHtml, viewMore, viewSettings } from './views/settings';
 import { viewSymptoms } from './views/symptoms';
 import { viewWeeks } from './views/weeks';
 
-const RAIL: [string, string, string][] = [['home', '🏠', 'Home'], ['weeks', '📅', 'Weekly milestones'], ['symptoms', '📝', 'Symptoms'], ['kicks', '👣', 'Kick counter'], ['contractions', '⏱', 'Contractions'], ['prep', '🧳', 'Prep checklists'],
-  ['budget', '💰', 'Budget'], ['names', '👶', 'Baby names'], ['nursery', '🛏', 'Nursery'], ['photos', '📸', 'Photo milestones'], ['daycare', '🏫', 'Daycare & caregivers'], ['supplies', '🧷', 'Supplies & diapers'], ['settings', '⚙️', 'Settings']];
-const TABS: [string, string, string][] = [['home', '🏠', 'Home'], ['weeks', '📅', 'Weeks'], ['kicks', '👣', 'Kicks'], ['contractions', '⏱', 'Timer'], ['more', '☰', 'More']];
+const FIXED: Record<string, [string, string]> = { home: ['🏠', 'Home'], more: ['☰', 'More'], settings: ['⚙️', 'Settings'] };
+const label = (id: string): [string, string, string] => { const m = byId(id); return m ? [m.icon, m.label, m.short] : [FIXED[id][0], FIXED[id][1], FIXED[id][1]]; };
+
+/** Tab bar (Home + this person's modules + More + Settings, max 10 slots) and the desktop rail are built from config/preg-nav. */
+export function renderNav() {
+  const lay = layout(tabsFor(S.cfg, S.me));
+  const tb = $('#tabbar'), rn = $('#railnav'); if (!tb || !rn) return;
+  tb.innerHTML = lay.bar.map(id => { const [i, , sh] = label(id); return `<button data-a="nav" data-v="${id}"><span aria-hidden="true">${i}</span>${sh}</button>`; }).join('');
+  const rail = (id: string) => { const [i, l] = label(id); return `<button data-a="nav" data-v="${id}">${i} ${l}</button>`; };
+  rn.innerHTML = ['home', ...lay.tabs].map(rail).join('') + (lay.overflow.length ? '<div class="rail-sep">More</div>' + lay.overflow.map(rail).join('') : '') + '<div class="rail-sep"></div>' + rail('settings')
+    + '<button data-a="nav-open" class="rail-cust">🧩 Customize menu</button>';
+}
 
 export function shell() {
   document.body.innerHTML = `<div class="app">
     <aside class="rail"><div class="brandmark"><span class="logo" aria-hidden="true">♥</span>Pregnancy Tracker</div>
-      <nav>${RAIL.map(([v, i, n]) => `<button data-a="nav" data-v="${v}">${i} ${n}</button>`).join('')}</nav></aside>
+      <nav id="railnav"></nav></aside>
     <div class="main-wrap">
       <header class="topbar"><div class="topbar-in"><span class="avatar" id="tb-icon"></span>
         <div class="grow"><b id="tb-name">Pregnancy Tracker</b><small id="tb-sub" class="muted"></small></div>
         <span id="netchip"></span></div></header>
       <main id="main"><div class="loading"><div><div class="spin"></div>Loading your tracker…</div></div></main>
     </div>
-    <nav class="tabbar">${TABS.map(([v, i, n]) => `<button data-a="nav" data-v="${v}"><span aria-hidden="true">${i}</span>${n}</button>`).join('')}</nav>
+    <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
   </div><div id="sheets"></div>`;
+  renderNav();
 }
 
 /* ---------- “Offline – N changes waiting” ---------- */
@@ -60,14 +73,14 @@ export function scheduleRender() {
 }
 document.addEventListener('focusout', () => { if (S.deferRender) { S.deferRender = false; setTimeout(scheduleRender, 50); } });
 
-export const ready = () => S.loaded.profiles && S.loaded.lists;
+export const ready = () => S.loaded.profiles && S.loaded.lists && S.loaded.config;
 
-const MORE_VIEWS = ['symptoms', 'prep', 'budget', 'names', 'nursery', 'photos', 'daycare', 'supplies', 'settings'];
-const VIEWS: Record<string, () => string> = { budget: viewBudget, names: viewNames, nursery: viewNursery, photos: viewPhotos, daycare: viewDaycare, supplies: viewSupplies, home: viewHome, weeks: viewWeeks, symptoms: viewSymptoms, kicks: viewKicks, contractions: viewContractions, prep: viewPrep, more: viewMore, settings: viewSettings };
+const VIEWS: Record<string, () => string> = { care: viewCare, events: viewEvents, budget: viewBudget, names: viewNames, nursery: viewNursery, photos: viewPhotos, daycare: viewDaycare, supplies: viewSupplies, home: viewHome, weeks: viewWeeks, symptoms: viewSymptoms, kicks: viewKicks, contractions: viewContractions, prep: viewPrep, more: viewMore, settings: viewSettings };
 
 export function render() {
   const v = S.ui.view, main = $('#main'); if (!main) return;
-  const inMore = MORE_VIEWS.includes(v);
+  renderNav();
+  const lay = layout(tabsFor(S.cfg, S.me)), inMore = v === 'more' || lay.overflow.includes(v);   // a module living in the drawer highlights More
   $$('[data-a="nav"]').forEach(b => b.setAttribute('aria-current', b.dataset.v === v || (inMore && b.dataset.v === 'more' && !!b.closest('.tabbar')) ? 'page' : 'false'));
   if (!ready()) return;
   const c = ctx();
@@ -79,6 +92,7 @@ export function render() {
   if (S.ui.scrollTop) { window.scrollTo(0, 0); S.ui.scrollTop = false; }
   hydrateFiles();
   const on = $('.wk.on'); if (on && v === 'weeks') on.scrollIntoView({ block: 'nearest', inline: 'center' });
+  $('#tabbar [aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
 /** Images stored in the private bucket carry data-file; resolve their short-lived signed URLs after each render. */

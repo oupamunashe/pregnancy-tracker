@@ -125,3 +125,12 @@ input[type=checkbox] { accent-color: var(--primary); width: 1.2rem; height: 1.2r
 .sizecard { display: flex; gap: 12px; align-items: center; border: 1px solid var(--accent); border-radius: 12px; padding: 8px; margin-bottom: 8px; background: #fff; } .sizecard.best { outline: 2px solid var(--highlight); }
 .pack { width: 84px; height: 84px; object-fit: contain; background: #fff; border: 1px solid var(--accent); border-radius: 10px; flex: none; }
 @media (max-width: 520px) { .stats { grid-template-columns: 1fr; } .who-row { grid-template-columns: 1fr; } }
+
+/* ---------- care, events, customizable nav ---------- */
+.tabbar { overflow-x: auto; scrollbar-width: none; } .tabbar::-webkit-scrollbar { display: none; }
+.tabbar button { flex: 1 0 64px; padding: 0 4px; white-space: nowrap; }
+.rail-sep { margin: 12px 12px 4px; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; color: var(--ink-soft); border-top: 1px solid var(--accent); padding-top: 8px; }
+.rail nav { overflow-y: auto; max-height: calc(100vh - 90px); } .rail-cust { margin-top: 10px; border: 1.5px dashed var(--accent) !important; }
+.navlist { list-style: none; margin: 0; padding: 0; } .navlist li { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--bg) 60%, #fff); } .nl-name { flex: 1; font-weight: 600; }
+.has-alert { border-left: 6px solid var(--highlight); } .appt.next { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); } .appt.done { opacity: .88; }
+.nextappt { display: block; width: 100%; text-align: left; border: 1px solid var(--primary); cursor: pointer; font: inherit; color: inherit; } .nm2 { font-size: 1.15rem; font-weight: 800; color: var(--primary-dark); }
