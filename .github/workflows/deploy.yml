@@ -28,16 +28,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Require Supabase secrets
-        # Without them the site would build with NO login gate (local-only mode) — refuse to deploy that.
+      - name: Validate Supabase secrets
+        # NEXT_PUBLIC_* values are inlined into the static files at BUILD time. Without valid ones the site would ship
+        # with no login gate or a broken URL ("Failed to fetch") — so fail here, loudly, instead.
         env:
-          URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        run: |
-          if [ -z "$URL" ] || [ -z "$KEY" ]; then
-            echo "::error::Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY under Settings → Secrets and variables → Actions."
-            exit 1
-          fi
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: node scripts/verify-supabase-env.mjs
 
       - uses: actions/setup-node@v4
         with:
@@ -48,12 +45,20 @@ jobs:
       - run: npm run typecheck
       - uses: actions/configure-pages@v5
 
-      - name: Build static site
-        run: npm run build
+      - name: Build static export
         env:
           NEXT_PUBLIC_BASE_PATH: /pregnancy-tracker
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Confirm the Supabase URL was baked into the build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: |
+          HOST=$(node -e 'console.log(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL.trim()).host)')
+          grep -rl "$HOST" out/_next/static > /dev/null || { echo "::error::Supabase host not found in the built files"; exit 1; }
+          echo "OK: build points at $HOST"
 
       - run: touch out/.nojekyll
       - uses: actions/upload-pages-artifact@v3

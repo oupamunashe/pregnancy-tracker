@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { ProfileDataSchema, ThemeSchema, type Profile, type ProfileData } from "./schemas";
 import { useStore } from "./store";
 import { fromRow, toRow, TABLES, ts } from "./sync-map";
-import { getSupabase, isSyncConfigured } from "./supabase/client";
+import { getSupabase, isSyncConfigured, supabaseHost } from "./supabase/client";
 
 /**
  * Local-first cloud sync for a PRIVATE two-person household: Supabase RLS only admits allow-listed emails, and both people
@@ -37,7 +37,12 @@ export const useSyncStatus = create<SyncStatus>((set) => ({
 }));
 
 const CHUNK = 400;
-const fail = (what: string, e: { message: string } | null) => { if (e) throw new Error(`${what}: ${e.message}`); };
+/** Turns the browser's opaque "Failed to fetch" into something actionable. */
+const explain = (message: string) =>
+  /failed to fetch|networkerror|load failed|fetch failed/i.test(message)
+    ? `couldn't reach Supabase (${supabaseHost()}). Check your internet connection and that the Supabase project isn't paused (Dashboard → project → Restore). If it persists, the NEXT_PUBLIC_SUPABASE_URL secret used for the build may be wrong.`
+    : message;
+const fail = (what: string, e: { message: string } | null) => { if (e) throw new Error(`${what}: ${explain(e.message)}`); };
 
 async function pushProfile(sb: SupabaseClient, p: Profile, data: ProfileData) {
   const { error } = await sb.from("profiles").upsert({
