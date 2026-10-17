@@ -87,19 +87,33 @@ It checks `.env.local`, that logged-out access is blocked, then signs in each ac
 > `supabase/seed_allowlist.sql` now holds your real emails locally. Keep them out of git:
 > `git update-index --skip-worktree supabase/seed_allowlist.sql`
 
-## Live HTTPS link (accessible from anywhere)
-> Trade-off: this makes the **login page** public on the internet. Your data is still protected by Supabase login + Row Level Security
-> (a stranger sees only the sign-in form; the app code is not secret). Use strong passwords. If you'd rather keep everything private, skip this and use the home Wi-Fi setup above.
+## Live site: GitHub Pages + PWA  (https://oupamunashe.github.io/pregnancy-tracker/)
+Architecture: Next.js **static export** (plain files in `out/`) → built by **GitHub Actions** on every push to `main` → hosted on **GitHub Pages** (HTTPS)
+→ talks directly to **Supabase** (Auth + Postgres with Row Level Security + Realtime). It is an installable **PWA** (manifest, icons, offline service worker).
 
-### Option A — GitHub Pages (workflow included: `.github/workflows/deploy.yml`)
-**Needs GitHub Pro/Team** — on a free account Pages only works for *public* repos, and this repo must stay private.
-1. Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-2. Repo → **Settings → Secrets and variables → Actions → New repository secret**, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (same values as `.env.local`; never the service_role key).
-3. Push to `main` (or Actions → *Deploy to GitHub Pages* → Run workflow). The URL will be `https://<username>.github.io/pregnancy-tracker/`.
+> The login *page* is public on the internet; the **data** is not — a stranger can only see the sign-in form (RLS + closed sign-ups).
+> GitHub Pages from a **private** repo needs a paid GitHub plan (Pro/Team). On a free plan, Pages only serves public repos.
 
-### Option B — Vercel (free plan works with a private repo)
-https://vercel.com/new → import `oupamunashe/pregnancy-tracker` → add the same two environment variables → Deploy. (Or CLI: `npx vercel login`, `npx vercel link`, `npx vercel env add …`, `npx vercel --prod`.) No extra config needed.
+### One-time setup
+1. **Repo → Settings → Pages → Build and deployment → Source: GitHub Actions.**
+2. **Repo → Settings → Secrets and variables → Actions → New repository secret** (twice):
+   | Name | Value |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | `https://gvwwwcqwudzygabzbrea.supabase.co` |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → **anon public** key (never `service_role`) |
+3. **Supabase → Authentication → URL Configuration:** Site URL `https://oupamunashe.github.io/pregnancy-tracker/` and add `https://oupamunashe.github.io/pregnancy-tracker/**` to Redirect URLs.
+4. **Supabase → Authentication → Sign In / Providers:** keep "Allow new users to sign up" **OFF** (the DB trigger + allow-list also block outsiders).
+5. Push to `main` (or Actions → *Deploy to GitHub Pages* → *Run workflow*). The workflow **refuses to deploy** if the two secrets are missing, so the site can never go live without its login gate.
 
-### After you have the live URL (either option)
-Supabase → **Authentication → URL Configuration**: set **Site URL** to the live URL and add it (with `/**`) under **Redirect URLs**. Then on each phone: open the link → sign in → **Add to Home Screen**.
-Realtime works the same on the live site because it connects straight to Supabase (`wss://<project>.supabase.co`), so edits on one phone appear on the other within a moment.
+### On the phones
+Open the link → sign in → **Share/⋮ → Add to Home Screen** (installs as an app with its own icon). Realtime keeps both phones in sync.
+
+### Local commands (all use the same `/pregnancy-tracker/` base path)
+| Command | What it does |
+|---|---|
+| `npm run dev` / `npm run dev:lan` | live-reload dev server → `http://localhost:3000/pregnancy-tracker/` (`dev:lan` is reachable from phones on your Wi-Fi) |
+| `npm run build` | static export into `out/` (exactly what GitHub Pages serves) |
+| `npm run start:lan` | serves `out/` on `0.0.0.0:3000` under the same base path — preview the real build, or run it at home |
+| `npm run check:supabase` | verifies `.env.local` + both logins |
+
+Service worker / PWA install only activate on the HTTPS site (or `localhost`), not on `http://192.168…` addresses — browsers require a secure context.

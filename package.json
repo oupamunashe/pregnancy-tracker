@@ -5,14 +5,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/serve-static.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev:lan": "next dev -H 0.0.0.0 -p 3000",
-    "start:lan": "next start -H 0.0.0.0 -p 3000",
+    "start:lan": "node scripts/serve-static.mjs",
     "ip": "ipconfig getifaddr en0 || ipconfig getifaddr en1",
-    "check:supabase": "node scripts/check-supabase.mjs",
-    "build:static": "STATIC_EXPORT=1 next build"
+    "check:supabase": "node scripts/check-supabase.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",

@@ -3,8 +3,10 @@
 -- Only these emails can create an account, sign in, or read/write any data.
 
 insert into private.allowed_emails (email) values
-  (lower('YOUR-EMAIL@example.com')),
-  (lower('WIFE-EMAIL@example.com'))
+  (lower('piepienamunny@gmail.com')),
+  (lower('chimbanipaidamoyo@gmail.com')),
+  (lower('oupamunashe@gmail.com')),
+  (lower('oupamuchenga@gmail.com'))
 on conflict do nothing;
 
 -- To remove someone's access later:

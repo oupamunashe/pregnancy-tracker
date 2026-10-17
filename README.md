@@ -1,6 +1,6 @@
 # Pregnancy Tracker
 
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · Zustand · Zod · date-fns · Vitest
+Next.js 15 static-export PWA (App Router) · React 19 · TypeScript · Tailwind CSS · Zustand · Zod · date-fns · Vitest
 
 Every date in the app is derived from the active profile's LMP (`EDD = LMP + 280 days`, task date = `LMP + week × 7`).
 Data lives in `localStorage` under `pregtracker.v1` (same shape as the prototype, so prototype data loads and is migrated).
@@ -11,11 +11,11 @@ This app is for a household of two. See **[PRIVATE-SETUP.md](PRIVATE-SETUP.md)**
 ## Run
 ```bash
 npm install
-npm run dev        # http://localhost:3000
+npm run dev        # http://localhost:3000/pregnancy-tracker/
 npm test           # gestational engine, diaper calculator, schemas + migration
 npm run typecheck
-npm run build && npm start
-npm run dev:lan    # same, reachable from phones on your Wi-Fi
+npm run build && npm start   # static export in out/, served under /pregnancy-tracker/
+npm run dev:lan    # same, reachable from phones on your Wi-Fi (app lives under /pregnancy-tracker/)
 ```
 
 ## Layout

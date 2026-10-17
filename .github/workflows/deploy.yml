@@ -1,6 +1,11 @@
-# Builds the app as static files and publishes it to GitHub Pages (HTTPS).
-# One-time setup: repo Settings → Pages → Source: "GitHub Actions"; Settings → Secrets and variables → Actions → add
-#   NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY   (both public-by-design; data is protected by login + RLS)
+# Builds the Next.js static export (PWA) and publishes it to GitHub Pages on every push to main.
+# Live at: https://oupamunashe.github.io/pregnancy-tracker/
+#
+# One-time setup (repo Settings):
+#   1. Pages → Build and deployment → Source: "GitHub Actions"
+#   2. Secrets and variables → Actions → New repository secret:
+#        NEXT_PUBLIC_SUPABASE_URL        https://gvwwwcqwudzygabzbrea.supabase.co
+#        NEXT_PUBLIC_SUPABASE_ANON_KEY   the "anon public" key (never the service_role key)
 name: Deploy to GitHub Pages
 
 on:
@@ -22,20 +27,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Require Supabase secrets
+        # Without them the site would build with NO login gate (local-only mode) — refuse to deploy that.
+        env:
+          URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run typecheck
       - uses: actions/configure-pages@v5
+
       - name: Build static site
         run: npm run build
         env:
-          STATIC_EXPORT: "1"
-          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          NEXT_PUBLIC_BASE_PATH: /pregnancy-tracker
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - run: touch out/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
