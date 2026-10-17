@@ -7,6 +7,9 @@ an IndexedDB **outbox** for offline edits, and a **Realtime** channel so both ph
 **Views:** Home (progress wheel, countdown) · Weekly milestones · Symptom logger · Kick counter · Contraction timer (5-1-1 guide) ·
 Prep checklists (hospital bags ×3, admin) · **Budget** · **Baby names** (each partner votes + hearts on their own phone; both hearts = match) · **Nursery** (planner + vision board) · **Photo milestones** (bump + scans, private bucket) · **Daycare & caregivers** (comparison, ratings, visit log) · **Supplies & diapers** (needs list, diaper log, nappy stock forecast, SA size calculator) · **Medical care** (providers + appointment log with vitals, notes and carried-over questions) · **Events & photography** (baby shower / gender reveal planner with RSVP guest list, budget, tasks and registry links; photographer directory for maternity, birth and newborn shoots) · Settings · **Customizable menu** (each partner picks and orders up to 7 modules for the tab bar and sidebar; the rest live under one expandable **More** item). The layout editor lives in **Settings → Navigation & Menu Layout**.
 
+## Icons
+All icons come from the PM monogram: `public/pm-mark.jpg` (512×512 sRGB — the favicon, apple-touch-icon and in-app logo) and PNGs generated from it (`icon-192/512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`). The 5084 px CMYK original is too heavy for the web (4.9 MB) and is kept out of the repo.
+
 ## Layout
 ```
 src/auth/auth.ts        Supabase client (VITE_* env), sign-in helpers, members allow-list check

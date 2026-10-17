@@ -13,7 +13,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'script-defer',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['pm-mark.jpg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Pregnancy Tracker', short_name: 'Pregnancy', lang: 'en-ZA',
         description: 'Private pregnancy tracker for two, synced live.',
@@ -22,7 +22,7 @@ export default defineConfig({
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
