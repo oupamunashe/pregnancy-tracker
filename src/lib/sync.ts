@@ -24,10 +24,16 @@ interface SyncStatus {
   syncing: boolean;
   lastSynced: string | null;
   error: string | null;
+  /** The stored session has been checked (so the UI knows whether to show the login screen). */
+  authChecked: boolean;
+  /** The first successful sync after sign-in has finished (so a new device doesn't offer onboarding before its data arrives). */
+  firstSyncDone: boolean;
+  /** Realtime channel is connected. */
+  live: boolean;
   set: (p: Partial<Omit<SyncStatus, "set">>) => void;
 }
 export const useSyncStatus = create<SyncStatus>((set) => ({
-  configured: isSyncConfigured(), email: null, syncing: false, lastSynced: null, error: null, set: (p) => set(p),
+  configured: isSyncConfigured(), email: null, syncing: false, lastSynced: null, error: null, authChecked: false, firstSyncDone: false, live: false, set: (p) => set(p),
 }));
 
 const CHUNK = 400;
@@ -113,7 +119,7 @@ export function syncNow(): Promise<void> {
       }
       for (const id of remoteMap.keys()) await pullProfile(sb, id);   // profiles that exist only in the cloud
       await syncSettings(sb, uid);
-      useSyncStatus.getState().set({ lastSynced: new Date().toISOString() });
+      useSyncStatus.getState().set({ lastSynced: new Date().toISOString(), firstSyncDone: true });
     } catch (e) {
       useSyncStatus.getState().set({ error: e instanceof Error ? e.message : String(e) });
       throw e;
@@ -147,37 +153,69 @@ export async function signInWithPassword(email: string, password: string): Promi
 
 export async function signOut(): Promise<void> {
   await getSupabase()?.auth.signOut();
-  useSyncStatus.getState().set({ email: null, lastSynced: null, error: null });
+  useSyncStatus.getState().set({ email: null, lastSynced: null, error: null, firstSyncDone: false, live: false });
 }
 
-/** Tracks the auth session and auto-syncs (debounced) after local edits while signed in. Returns a cleanup fn. */
+/** Pushes pending changes, signs out, and removes this device's local copy so nothing stays readable while logged out. */
+export async function signOutAndWipe(): Promise<void> {
+  await syncNow();                       // throws if the latest changes couldn't be saved — the caller decides what to do
+  await signOut();
+  useStore.getState().resetAll();
+}
+
+/**
+ * Tracks the auth session; while signed in it
+ *  - syncs (debounced) after local edits,
+ *  - listens to Supabase Realtime so the other person's changes appear live,
+ *  - re-syncs when the app regains focus and once a minute (safety net if the socket drops).
+ * Returns a cleanup function.
+ */
 export function startAutoSync(): () => void {
   const sb = getSupabase();
   if (!sb) return () => {};
+  const status = useSyncStatus.getState;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let channel: ReturnType<SupabaseClient["channel"]> | null = null;
+
   const schedule = (ms: number) => {
     clearTimeout(timer);
-    timer = setTimeout(() => { if (useSyncStatus.getState().email) syncNow().catch(() => {}); }, ms);
+    timer = setTimeout(() => { if (status().email) syncNow().catch(() => {}); }, ms);
   };
 
-  const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {
-    useSyncStatus.getState().set({ email: session?.user.email ?? null });
-    if (session) schedule(0);
-  });
-  sb.auth.getSession().then(({ data }) => {
-    useSyncStatus.getState().set({ email: data.session?.user.email ?? null });
-    if (data.session) schedule(0);
-  });
+  const disconnectRealtime = () => { if (channel) { void sb.removeChannel(channel); channel = null; } status().set({ live: false }); };
+  const connectRealtime = () => {
+    if (channel) return;
+    channel = sb.channel("household-changes");
+    // a deleted profile disappears from the other device too
+    channel.on("postgres_changes", { event: "DELETE", schema: "public", table: "profiles" }, (payload) => {
+      const id = (payload.old as { id?: string }).id;
+      if (id) useStore.getState().deleteProfile(id);
+    });
+    for (const { table } of [{ table: "profiles" }, ...TABLES]) {
+      channel.on("postgres_changes", { event: "INSERT", schema: "public", table }, () => schedule(300));
+      channel.on("postgres_changes", { event: "UPDATE", schema: "public", table }, () => schedule(300));
+      if (table !== "profiles") channel.on("postgres_changes", { event: "DELETE", schema: "public", table }, () => schedule(300));
+    }
+    channel.subscribe((s) => status().set({ live: s === "SUBSCRIBED" }));
+  };
+
+  const onSession = (email: string | null) => {
+    status().set({ email, authChecked: true });
+    if (email) { connectRealtime(); schedule(0); } else disconnectRealtime();
+  };
+  const { data: sub } = sb.auth.onAuthStateChange((_e, session) => onSession(session?.user.email ?? null));
+  void sb.auth.getSession().then(({ data }) => onSession(data.session?.user.email ?? null));
+
   const unsub = useStore.subscribe((s, prev) => {
     if (s.profiles !== prev.profiles || s.data !== prev.data || s.settingsUpdatedAt !== prev.settingsUpdatedAt) schedule(2500);
   });
-  // pick up the other person's edits: when the app regains focus, and once a minute while it's visible
   const refresh = () => { if (document.visibilityState === "visible") schedule(0); };
   document.addEventListener("visibilitychange", refresh);
   window.addEventListener("focus", refresh);
   const poll = setInterval(refresh, 60_000);
+
   return () => {
-    clearTimeout(timer); clearInterval(poll); sub.subscription.unsubscribe(); unsub();
+    clearTimeout(timer); clearInterval(poll); unsub(); sub.subscription.unsubscribe(); disconnectRealtime();
     document.removeEventListener("visibilitychange", refresh); window.removeEventListener("focus", refresh);
   };
 }

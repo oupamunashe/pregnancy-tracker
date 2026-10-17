@@ -10,7 +10,7 @@ import { DIAPER_BRANDS, rangeText, sizeKey } from "@/lib/diaper";
 import { computeEdd, formatLong, isValidISO, parseDate } from "@/lib/engine/gestation";
 import { DEFAULT_THEME, type Theme } from "@/lib/schemas";
 import { useStore } from "@/lib/store";
-import { deleteRemoteProfile, sendMagicLink, signInWithPassword, signOut, syncNow, useSyncStatus } from "@/lib/sync";
+import { deleteRemoteProfile, signOutAndWipe, syncNow, useSyncStatus } from "@/lib/sync";
 import { isUrl, shrinkImage } from "@/lib/utils";
 
 const ICONS: [string, string][] = [["🫐", "Blueberry"], ["🥜", "Peanut"], ["🌸", "Flower"], ["🥑", "Avocado"], ["👶", "Baby"], ["🍓", "Strawberry"], ["🥭", "Mango"], ["🍑", "Peach"], ["🌱", "Sprout"], ["🧸", "Teddy"], ["⭐", "Star"], ["💛", "Heart"]];
@@ -105,43 +105,35 @@ function ProfilesList() {
 }
 
 function CloudSyncSection() {
-  const { configured, email, syncing, lastSynced, error } = useSyncStatus();
-  const [addr, setAddr] = useState("");
-  const [pw, setPw] = useState("");
+  const { configured, email, syncing, lastSynced, error, live } = useSyncStatus();
   const [msg, setMsg] = useState("");
-  const [busy, setBusy] = useState(false);
 
-  const run = async (fn: () => Promise<void>, ok?: string) => {
-    setMsg(""); setBusy(true);
-    try { await fn(); if (ok) setMsg(ok); }
-    catch (e) { setMsg(e instanceof Error ? e.message : "Something went wrong."); }
-    finally { setBusy(false); }
+  const signOutHere = async () => {
+    setMsg("");
+    try { await signOutAndWipe(); }
+    catch (e) {
+      const why = e instanceof Error ? e.message : "unknown error";
+      if (confirm(`Your latest changes couldn't be synced (${why}).\n\nSign out anyway? This removes this device's copy, and unsynced changes will be lost.`)) {
+        const { signOut } = await import("@/lib/sync");
+        await signOut();
+        useStore.getState().resetAll();
+      }
+    }
   };
 
   return (
     <Card className="p-5 space-y-3">
       <SectionTitle>☁️ Private cloud sync</SectionTitle>
       {!configured ? (
-        <p className="text-sm text-gray-600">Not configured. Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to <code>.env.local</code> and restart — until then everything is saved only in this browser.</p>
-      ) : !email ? (
-        <>
-          <p className="text-sm text-gray-600">Only the two household email addresses can sign in. Your data stays on this device until you do; after that it syncs to your private Supabase project, where only the two of you can read it.</p>
-          <div className="grid sm:grid-cols-2 gap-2">
-            <Input type="email" placeholder="your email" value={addr} onChange={(e) => setAddr(e.target.value)} aria-label="Email" autoComplete="email" />
-            <Input type="password" placeholder="password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Password" autoComplete="current-password"
-              onKeyDown={(e) => e.key === "Enter" && addr && pw && void run(() => signInWithPassword(addr.trim(), pw))} />
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button disabled={busy || !addr.includes("@") || !pw} onClick={() => void run(() => signInWithPassword(addr.trim(), pw))}>Sign in</Button>
-            <Button variant="ghost" disabled={busy || !addr.includes("@")} onClick={() => void run(() => sendMagicLink(addr.trim()), `If ${addr.trim()} is on the household list, a sign-in link is on its way — open it on this device.`)}>Email me a magic link instead</Button>
-          </div>
-        </>
+        <p className="text-sm text-gray-600">Not configured. Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to <code>.env.local</code> and restart — until then everything is saved only in this browser, with no login.</p>
       ) : (
         <>
-          <p className="text-sm">Signed in as <b>{email}</b>. {lastSynced ? `Last synced ${new Date(lastSynced).toLocaleTimeString()}.` : "Not synced yet."} Changes sync automatically.</p>
+          <p className="text-sm">Signed in as <b>{email}</b>. {lastSynced ? `Last synced ${new Date(lastSynced).toLocaleTimeString()}.` : "Not synced yet."}{" "}
+            <span className={live ? "text-rose-700 font-semibold" : "text-gray-500"}>{live ? "● Live updates on" : "○ Live updates connecting…"}</span></p>
+          <p className="text-xs text-gray-500">Changes sync automatically and the other person&apos;s edits appear within a moment. Signing out removes this device&apos;s copy of the data.</p>
           <div className="flex gap-2 flex-wrap">
             <Button onClick={() => void syncNow().catch(() => {})} disabled={syncing}>{syncing ? "Syncing…" : "Sync now"}</Button>
-            <Button variant="ghost" onClick={() => void signOut()}>Sign out</Button>
+            <Button variant="ghost" onClick={() => void signOutHere()}>Sign out</Button>
           </div>
         </>
       )}

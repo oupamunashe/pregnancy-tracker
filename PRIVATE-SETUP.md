@@ -16,7 +16,7 @@ Supabase stores the shared data; only the two allow-listed email addresses can r
 
 ## 2. Supabase (the shared, locked-down database)
 1. https://supabase.com/dashboard → **New project** → set a strong database password.
-2. **SQL Editor → New query** → paste **all** of `supabase/migrations/0001_init.sql` → **Run**.
+2. **SQL Editor → New query** → paste **all** of `supabase/migrations/0001_init.sql` → **Run**. Then a second new query with all of `supabase/migrations/0002_realtime.sql` → **Run** (turns on live sync).
 3. Open `supabase/seed_allowlist.sql`, replace the two placeholder emails with yours and your wife's, paste into a new query → **Run**.
    *Do this before creating the users* — account creation is refused for any email not on this list.
 4. **Authentication → Sign In / Providers (or Settings)**: turn **OFF** "Allow new users to sign up".
@@ -43,8 +43,7 @@ npm run ip                             # prints this computer's Wi-Fi address, e
 ```
 Both `*:lan` scripts bind to `0.0.0.0:3000`, so other devices on the network can reach it.
 
-On each phone/tablet (same Wi-Fi): open `http://<that-ip>:3000` → **⚙️ Settings → Private cloud sync** → sign in with email + password.
-Her data then appears automatically and edits sync both ways.
+On each phone/tablet (same Wi-Fi): open `http://<that-ip>:3000`. The app opens on a **login screen** — sign in with your email + password. Your data then loads automatically, and edits appear on the other device within a moment (Supabase Realtime), in both directions.
 
 **Tips**
 - macOS will ask "Allow incoming network connections for node?" the first time → **Allow**. (Otherwise System Settings → Network → Firewall.)
@@ -54,7 +53,11 @@ Her data then appears automatically and edits sync both ways.
 - Each device keeps a local copy (works if the laptop is off once the page has loaded); cloud sync only needs internet to reach Supabase.
 - If you change `.env.local`, restart the server (the values are baked in at build time: re-run `npm run build`).
 
+## Login gate
+When the Supabase variables are set, the app shows nothing but the login screen until a registered household member signs in (every page, including direct links). There is no sign-up form, and sign-ups are refused by Supabase itself.
+**Sign out** (Settings → Private cloud sync) first saves your changes, then removes this device's local copy. The gate is an app-level lock: it keeps the app closed to anyone without a login, while the real protection of the data is Row Level Security in Supabase. Keep the laptop/phones locked with their own passcodes too.
+
 ## How sync works (and its one limitation)
-- Local-first: each device works without a connection. After sign-in, each pregnancy profile is reconciled with Supabase by its `updatedAt` — **newest edit wins per profile**. Edits push ~2.5 s after you make them; the app pulls when it regains focus and once a minute.
+- Local-first: each device works without a connection. After sign-in, each pregnancy profile is reconciled with Supabase by its `updatedAt` — **newest edit wins per profile**. Edits push ~2.5 s after you make them; the other device receives them live through Realtime (with a pull on focus and every minute as a safety net). A profile deleted on one device disappears from the other.
 - If you both edit the *same profile* within the same minute, the later save replaces the earlier one for that profile. For two people planning together this is rarely an issue; tell me if you want per-field merging.
 - Deleting a profile in Settings deletes the cloud copy too. Theme + custom diaper images are per person and sync to your own account.

@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
-import { startAutoSync } from "@/lib/sync";
+import { startAutoSync, syncNow, signOut, useSyncStatus } from "@/lib/sync";
 import { cx } from "@/lib/utils";
 import { formatLong, gestationalAge, parseDate, startOfToday, computeEdd } from "@/lib/engine/gestation";
+import { LoginScreen } from "./LoginScreen";
 import { NewProfileModal } from "./NewProfileModal";
 import { ProfileIcon } from "./ProfileIcon";
 import { ThemeApplier } from "./ThemeApplier";
@@ -29,6 +30,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const profile = useStore((s) => s.profiles.find((p) => p.id === s.activeId));
   const simToday = useStore((s) => s.simToday);
   const setSimToday = useStore((s) => s.setSimToday);
+  const { configured, authChecked, email, firstSyncDone, error: syncError } = useSyncStatus();
+  const locked = configured && !email;   // cloud is configured: the app is only usable while signed in
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const moreBtn = useRef<HTMLButtonElement>(null);
 
@@ -66,13 +69,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <ThemeApplier />
       <header className="bg-[var(--surface-card)] border-b-4 border-brass-400 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-          <ProfileIcon icon={profile?.icon} size={36} />
+          <ProfileIcon icon={locked ? "🔒" : profile?.icon} size={36} />
           <div className="leading-tight">
-            <div className="font-bold text-rose-700">{profile ? profile.nickname : "Pregnancy Tracker"}</div>
-            {profile && <div className="text-xs text-gray-500">{subtitle}</div>}
+            <div className="font-bold text-rose-700">{profile && !locked ? profile.nickname : "Pregnancy Tracker"}</div>
+            {profile && !locked && <div className="text-xs text-gray-500">{subtitle}</div>}
           </div>
         </div>
-        {profile && (
+        {profile && !locked && (
           <nav className="max-w-6xl mx-auto px-4 pb-2 scroll-x flex gap-1 items-center" aria-label="Main">
             {TABS.map((t) => (
               <Link key={t.href} href={t.href} className={cx("tab", pathname === t.href && "on")} aria-current={pathname === t.href ? "page" : undefined}>{t.icon} {t.label}</Link>
@@ -93,8 +96,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      {!hydrated ? (
+      {!hydrated || (configured && !authChecked) ? (
         <p className="text-center text-gray-500 py-20">Loading…</p>
+      ) : locked ? (
+        <LoginScreen />
+      ) : !profile && configured && !firstSyncDone ? (
+        // signed in on a new device: wait for the first sync before offering onboarding, so we never create a duplicate profile
+        <div className="text-center py-20 space-y-3">
+          {syncError ? (
+            <>
+              <p className="text-brass-700" role="alert">Couldn&apos;t load your data: {syncError}</p>
+              <div className="flex gap-2 justify-center">
+                <button type="button" className="btn btn-p" onClick={() => void syncNow().catch(() => {})}>Retry</button>
+                <button type="button" className="btn btn-g" onClick={() => void signOut()}>Sign out</button>
+              </div>
+            </>
+          ) : <p className="text-gray-500">Syncing your data…</p>}
+        </div>
       ) : profile ? (
         <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
           {children}
