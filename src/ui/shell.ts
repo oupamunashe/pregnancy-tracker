@@ -41,11 +41,11 @@ export function renderNav() {
 
 export function shell() {
   document.body.innerHTML = `<div class="app">
-    <aside class="rail"><div class="brandmark"><span class="logo" aria-hidden="true">♥</span>Pregnancy Tracker</div>
+    <aside class="rail"><div class="brandmark"><span class="logo" aria-hidden="true">♥</span>Preggy</div>
       <nav id="railnav"></nav></aside>
     <div class="main-wrap">
       <header class="topbar"><div class="topbar-in"><span class="avatar" id="tb-icon"></span>
-        <div class="grow"><b id="tb-name">Pregnancy Tracker</b><small id="tb-sub" class="muted"></small></div>
+        <div class="grow"><b id="tb-name">Preggy</b><small id="tb-sub" class="muted"></small></div>
         <span id="netchip"></span></div></header>
       <main id="main"><div class="loading"><div><div class="spin"></div>Loading your tracker…</div></div></main>
     </div>
@@ -89,7 +89,7 @@ export function render() {
   if (!ready()) return;
   const c = ctx();
   const ic = $('#tb-icon'); if (ic) ic.innerHTML = c ? iconHtml(c.p.icon, 28) : '';
-  const nm = $('#tb-name'); if (nm) nm.textContent = c ? c.p.nickname : 'Pregnancy Tracker';
+  const nm = $('#tb-name'); if (nm) nm.textContent = c ? c.p.nickname : 'Preggy';
   const sb = $('#tb-sub'); if (sb) sb.textContent = c ? (c.ga.totalDays >= 0 ? `${c.ga.weeks}w ${c.ga.days}d` : `starts in ${-c.ga.totalDays}d`) : '';
   if (!activeProfile()) { main.innerHTML = firstRun(); return; }
   main.innerHTML = (VIEWS[v] || viewHome)();

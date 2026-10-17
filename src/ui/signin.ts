@@ -5,7 +5,7 @@ import { esc } from '../core/format';
 import { closeSheet, openSheet, toast, val } from './sheet';
 
 const frame = (inner: string) => `<main class="signin"><div class="signin-in">
-  <div class="brandmark"><span class="logo" aria-hidden="true">♥</span>Pregnancy Tracker</div>${inner}</div></main><div id="sheets"></div>`;
+  <div class="brandmark"><span class="logo" aria-hidden="true">♥</span>Preggy</div>${inner}</div></main><div id="sheets"></div>`;
 
 export function showSignIn(prefill = '') {
   document.body.innerHTML = frame(`

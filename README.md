@@ -1,4 +1,4 @@
-# Pregnancy Tracker (Vite SPA · PWA · Supabase)
+# Preggy — pregnancy tracker (Vite SPA · PWA · Supabase)
 
 Vanilla TypeScript + Vite, built as an installable PWA and published to GitHub Pages by GitHub Actions. Same architecture as the
 Pa-Nashe tracker: Supabase Auth (email + password) → `public.members` allow-list → `public.docs` documents written with `doc_merge`,

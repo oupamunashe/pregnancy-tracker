@@ -15,7 +15,7 @@ export default defineConfig({
       injectRegister: 'script-defer',
       includeAssets: ['pm-mark.jpg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Pregnancy Tracker', short_name: 'Pregnancy', lang: 'en-ZA',
+        name: 'Preggy', short_name: 'Preggy', lang: 'en-ZA',
         description: 'Private pregnancy tracker for two, synced live.',
         theme_color: '#00A693', background_color: '#eeeae3', display: 'standalone', orientation: 'portrait',
         start_url: BASE, scope: BASE,
