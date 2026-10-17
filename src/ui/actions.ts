@@ -9,6 +9,8 @@ import type { Contraction, DiaperEntry, KickSession, ListKey, Who } from '../cor
 import { nappiesRemaining } from '../core/calc';
 import { placeholderImage } from '../core/diaper';
 import { shrinkImage } from './image';
+import { linkCard, probeImage, resolveLink } from './linkimage';
+import { SWATCHES } from '../core/content';
 import { createProfile, delItem, deleteProfile, items, putItem, saveNav, saveProfile, seedBudget, seedNursery, seedSupplies, setActive } from '../data/db';
 import { EVENT_KINDS } from '../core/content';
 import { layout, addTab, moveTab, removeTab, sanitizeTabs, tabsFor, DEFAULT_TABS } from '../core/nav';
@@ -138,12 +140,33 @@ async function act(a: string, el: HTMLElement, e: Event) {
     }
     case 'vision-add': {
       e.preventDefault();
-      const url = val(document, '#vb-url'), notes = val(document, '#vb-notes'), file = ($('#vb-file') as HTMLInputElement).files?.[0];
-      if (!url && !file && !notes) return toast('Add an image, link or a note first.', 'bad');
-      let fileId: string | undefined;
+      const raw = val(document, '#vb-url'), notes = val(document, '#vb-notes'), file = ($('#vb-file') as HTMLInputElement).files?.[0];
+      if (!raw && !file && !notes) return toast('Add an image, link or a note first.', 'bad');
+      let fileId: string | undefined, image: string | undefined, source: string | undefined, title: string | undefined;
       if (file) { try { toast('Uploading…'); fileId = await uploadImage(file); } catch (err: any) { return toast(err.message || 'Upload failed', 'bad'); } }
-      await putItem(pid(), 'vision', uid(), { image: url, fileId, notes, at: Date.now() }).catch(fail);
+      else if (raw) {
+        toast('Looking up the link…');
+        const r = await resolveLink(raw, { probe: probeImage, preview: S.linkPreview });
+        if (!r) return toast('That doesn’t look like a web link — paste one starting with https://', 'bad');
+        ({ image, source, title } = r);
+        toast(r.via === 'preview' ? 'Picture fetched ✓' : r.via === 'none' ? 'Saved as a link card — no picture could be fetched for that page.' : 'Image added');
+      }
+      await putItem(pid(), 'vision', uid(), { image, fileId, source, title, notes, at: Date.now() }).catch(fail);
       return render();
+    }
+    case 'vision-retry': {
+      const card = items<any>(pid(), 'vision').find(v => v.id === d.id), url = card?.source || card?.image;
+      if (!url || !S.linkPreview) return toast('Picture lookup isn’t set up yet — see the README (link-preview function).', 'bad');
+      toast('Fetching the picture…');
+      const r = await resolveLink(url, { probe: async () => false, preview: S.linkPreview });
+      if (!r?.image) return toast('No picture available for that link — the card stays as a link.', 'bad');
+      await putItem(pid(), 'vision', d.id!, { image: r.image, source: url, title: r.title || card.title }).catch(fail); return toast('Picture fetched ✓');
+    }
+    /* any custom colour: the native picker fires `change` once a colour is chosen. A colour equal to a preset just switches that preset on. */
+    case 'vision-custom': {
+      const hex = (el as HTMLInputElement).value.toLowerCase(); if (!/^#[0-9a-f]{6}$/.test(hex)) return;
+      const key = SWATCHES.find(([, h]) => h.toLowerCase() === hex)?.[1] ?? hex;
+      return void putItem(pid(), 'vision', d.id!, { swatches: { [key]: true } }).catch(fail);
     }
     case 'vision-swatch': { const on = items<any>(pid(), 'vision').find(v => v.id === d.id)?.swatches?.[d.hex!]; return void putItem(pid(), 'vision', d.id!, { swatches: { [d.hex!]: on ? null : true } }).catch(fail); }
 
@@ -334,5 +357,9 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => { const el = (e.target as HTMLElement).closest('input,select,textarea') as HTMLElement | null; if (el?.dataset.a) act(el.dataset.a, el, e); });
 /* a broken pack photo falls back to a generated placeholder */
-document.addEventListener('error', e => { const t = e.target as HTMLImageElement; if (t instanceof HTMLImageElement && t.dataset.brand) { t.src = placeholderImage(t.dataset.brand, t.dataset.size || '', t.dataset.color || '#00A693'); delete t.dataset.brand; } }, true);
+document.addEventListener('error', e => {
+  const t = e.target as HTMLImageElement; if (!(t instanceof HTMLImageElement)) return;
+  if (t.dataset.brand) { t.src = placeholderImage(t.dataset.brand, t.dataset.size || '', t.dataset.color || '#00A693'); delete t.dataset.brand; }
+  else if (t.classList.contains('vimg') && t.dataset.source) { t.outerHTML = linkCard(t.dataset.source, t.dataset.title, { retryId: S.linkPreview ? t.dataset.id : undefined }); }   // a dead image link becomes a link card, never an empty frame
+}, true);
 document.addEventListener('submit', e => { const el = (e.target as HTMLElement).closest('form[data-a]') as HTMLElement | null; if (el) act(el.dataset.a!, el, e); });

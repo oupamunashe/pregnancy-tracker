@@ -83,6 +83,12 @@ async function startApp() {
     const local = new LocalStore(s.user.id);
     const db = new SupabaseAdapter(sb, local, msg => toast(msg, 'bad'));
     Object.assign(S, { db, assets: new SupabaseFiles(sb), user: { id: s.user.id, email } });
+    S.linkPreview = async url => {   // optional: needs `supabase functions deploy link-preview`; without it cards fall back to a link card
+      try {
+        const r: any = await Promise.race([sb.functions.invoke('link-preview', { body: { url } }), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 9000))]);
+        return r?.data && (r.data.image || r.data.title) ? r.data : null;
+      } catch { return null; }
+    };
     Object.assign(session, { active: true, email, pending: () => db.pendingCount, signOut: () => signOut(db, local) });
     shell(); inShell = true; render();
     db.onStatus(setNetStatus);

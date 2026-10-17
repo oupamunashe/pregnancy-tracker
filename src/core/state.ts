@@ -8,6 +8,8 @@ export function lsDel(k: string) { try { localStorage.removeItem(k); } catch { /
 
 export interface UiState { view: string; week: number | null; prepGroup: string; sheetProfile: boolean; nameFilter: string; nurseryTab: string; photoKind: string; careTab: string; eventsTab: string; shootKind: string; openEvent: string | null; navDraft: string[] | null; railMore?: boolean; scrollTo?: string | null; [k: string]: any }
 export interface State {
+  /** Asks the private link-preview Edge Function for a page's picture/title (set when signed in; absent in demo). */
+  linkPreview?: (url: string) => Promise<{ image?: string; title?: string; site?: string } | null>;
   db: DocStore | null; assets: FileStore | null; user: { id: string; email: string } | null;
   cfg: Record<string, any>;                                // config/preg-* (e.g. preg-nav)
   profiles: Record<string, Profile>;                       // gestations/<id>

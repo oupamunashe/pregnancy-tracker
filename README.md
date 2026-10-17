@@ -10,6 +10,11 @@ Prep checklists (hospital bags ×3, admin) · **Budget** · **Baby names** (each
 ## Icons
 All icons come from the PM monogram: `public/pm-mark.jpg` (512×512 sRGB — the favicon, apple-touch-icon and in-app logo) and PNGs generated from it (`icon-192/512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`). The 5084 px CMYK original is too heavy for the web (4.9 MB) and is kept out of the repo.
 
+## Vision board: custom colours and Pinterest / link pictures
+- **Colours:** every card has the preset swatches plus a rainbow **+** picker for any colour; custom colours show as extra swatches and in the card's colour strip.
+- **Links:** paste an image link (used as is), any link that loads as a picture (probed in the browser), or a page such as a **Pinterest pin**. Pages can't be read by a browser (CORS) and Pinterest only gives its image to server-side requests, so the picture comes from the optional **`link-preview` Edge Function** in your own Supabase. Without it the card shows a tidy link card (📌 / 🔗, site name, *Open link ↗*) — never an empty frame — and a dead image link turns into the same card.
+- **Deploy the function (optional, ~2 min):** `supabase login && supabase link --project-ref <ref> && supabase functions deploy link-preview`. It only answers signed-in members (`public.is_member()`), fetches only https links to public hosts (private/loopback/metadata addresses are blocked, also after redirects), and returns just `{ image, title, site }`. Link cards then show a **Fetch picture** button to retry.
+
 ## Layout
 ```
 src/auth/auth.ts        Supabase client (VITE_* env), sign-in helpers, members allow-list check

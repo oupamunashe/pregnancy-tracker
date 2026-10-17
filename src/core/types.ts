@@ -17,7 +17,8 @@ export interface BudgetItem { category: string; item: string; est: number; actua
 export interface BabyName { name: string; meaning?: string; origin?: string; note?: string; votes?: PerPerson<number>; fav?: PerPerson<boolean>; by?: Who; at: number }
 export type NurseryStatus = 'To buy' | 'Ordered' | 'Delivered' | 'Assembled' | 'Set up';
 export interface NurseryItem { text: string; todo?: string; status: NurseryStatus; est?: number | null; link?: string; done: boolean }
-export interface VisionCard { image?: string; fileId?: string; notes?: string; swatches?: Record<string, boolean | null>; at: number }
+/** A vision-board card: a picture (`image` = direct URL, or `fileId` = private upload), the page it came from (`source`, e.g. a Pinterest pin), notes and colour swatches (hex → true). */
+export interface VisionCard { image?: string; fileId?: string; source?: string; title?: string; notes?: string; swatches?: Record<string, boolean | null>; at: number }
 export interface Photo { kind: 'bump' | 'scan'; week: number; d: string; caption?: string; fileId?: string; url?: string; by?: Who; at: number }
 export interface Visit { d: string; note?: string; by?: Who }
 export type CareStatus = 'Shortlist' | 'Visited' | 'Chosen' | 'Rejected';

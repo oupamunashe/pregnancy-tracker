@@ -154,3 +154,12 @@ input[type=checkbox] { accent-color: var(--primary); width: 1.2rem; height: 1.2r
 .rail-more:hover { background: var(--bg); } .rail-more.child-active { color: var(--primary-dark); } .rail-more .chev { font-size: .8rem; opacity: .7; }
 .rail-sub { display: flex; flex-direction: column; gap: 2px; margin: 0 0 4px 14px; padding-left: 6px; border-left: 2px solid var(--accent); } .rail-sub[hidden] { display: none; }
 .rail-sub button { font-size: .92rem; padding: 8px 10px; } .rail-settings { margin-top: 8px; border-top: 1px solid var(--accent) !important; border-radius: 0 0 12px 12px !important; }
+
+/* vision board: custom colour picker + link cards */
+.sw.custom { outline-style: dashed; }
+.sw-picker { position: relative; width: 24px; height: 24px; border-radius: 50%; flex: none; cursor: pointer; display: grid; place-items: center; background: conic-gradient(#e44, #ec4, #4c4, #4cc, #44e, #c4c, #e44); outline: 1px solid rgba(0,0,0,.25); font-weight: 800; font-size: .8rem; color: #fff; text-shadow: 0 0 3px #000; }
+.sw-picker input[type=color] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; }
+.sw-picker:focus-within { outline: 2px solid var(--primary); }
+.linkcard { display: flex; gap: 12px; align-items: center; padding: 14px; margin-bottom: 8px; border-radius: 10px; background: color-mix(in srgb, var(--bg) 40%, #fff); border: 1px dashed var(--accent); }
+.lc-ico { font-size: 2rem; line-height: 1; } .lc-body { min-width: 0; } .lc-body b { display: block; overflow-wrap: anywhere; }
+.srcline { display: block; margin: -2px 0 8px; }
