@@ -35,9 +35,9 @@ for (const n of [1, 2]) {
   ok(`signed in as ${data.user.email}`);
   const mem = await sb.from("members").select("email, person");
   if (mem.error) bad(`members read failed: ${mem.error.message}`); else if (!mem.data.some((r) => r.email.toLowerCase() === data.user.email.toLowerCase())) bad("signed in, but this email is NOT in public.members — the app will show 'This tracker is private'"); else ok(`member (${mem.data.find((r) => r.email.toLowerCase() === data.user.email.toLowerCase()).person})`);
-  const w = await sb.rpc("doc_merge", { p_collection: "preg_profiles", p_id: "__check__", p_patch: { ping: Date.now() } });
+  const w = await sb.rpc("doc_merge", { p_collection: "gestations", p_id: "__check__", p_patch: { ping: Date.now() } });
   if (w.error) bad(`doc_merge failed: ${w.error.message}${/violates check/.test(w.error.message) ? "  → run migrations/0003_pregnancy_collections.sql" : ""}`);
-  else { ok("write via doc_merge works (collection preg_profiles accepted)"); await sb.from("docs").delete().eq("collection", "preg_profiles").eq("id", "__check__"); }
+  else { ok("write via doc_merge works (collection gestations accepted)"); await sb.from("docs").delete().eq("collection", "gestations").eq("id", "__check__"); }
   await sb.auth.signOut();
 }
 rl.close(); console.log("\nDone.\n");

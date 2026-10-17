@@ -1,5 +1,5 @@
 /* Database layer: paths, writes (always doc_merge-style patches, so two phones editing at once both survive) and subscriptions.
-     preg_profiles/<profileId>            → { nickname, lmp, notes, icon, status, createdAt }
+     gestations/<profileId>            → { nickname, lmp, notes, icon, status, createdAt }
      preg_lists/<profileId>~<listKey>     → { items: { <itemId>: item | null } }      (null = deleted tombstone)
    Lists are maps keyed by item id (not arrays) because doc_merge merges objects key by key but REPLACES arrays. */
 import { BUDGET_SEED, NURSERY_SEED, PREP_GROUPS, PREP_SEED, SUPPLY_SEED } from '../core/content';
@@ -7,6 +7,8 @@ import { uid } from '../core/format';
 import { hooks } from '../core/hooks';
 import { S, lsSet } from '../core/state';
 import { LIST_KEYS, type ListKey, type Profile, type WithId } from '../core/types';
+
+import { assertCollection } from './adapter';
 
 const queues: Record<string, Promise<unknown>> = {};
 /** Writes to the same document run one after another. */
@@ -16,6 +18,7 @@ function enqueue<T>(path: string, fn: () => Promise<T>): Promise<T> {
   return p;
 }
 export async function dbWrite(path: string, op: 'set' | 'update' | 'delete', data?: any) {
+  try { assertCollection(path); } catch (e: any) { hooks.toast(e.message, 'bad'); throw e; }
   if (!S.db) { hooks.toast('Not connected – check your internet connection.', 'bad'); throw new Error('offline'); }
   if (!S.canWrite) { hooks.toast('You have view-only access.', 'bad'); throw new Error('readonly'); }
   return enqueue(path, async () => {
@@ -36,12 +39,12 @@ export function items<T = any>(pid: string, key: ListKey): WithId<T>[] {
 export const putItem = (pid: string, key: ListKey, id: string, patch: any) => dbWrite(listPath(pid, key), 'update', { items: { [id]: patch } });
 export const delItem = (pid: string, key: ListKey, id: string) => dbWrite(listPath(pid, key), 'update', { items: { [id]: null } });
 
-export const saveProfile = (id: string, patch: Partial<Profile>) => dbWrite('preg_profiles/' + id, 'update', patch);
+export const saveProfile = (id: string, patch: Partial<Profile>) => dbWrite('gestations/' + id, 'update', patch);
 
 /** Creates a profile and seeds its prep checklists in one merge write. */
 export async function createProfile(p: { nickname: string; lmp: string; notes?: string; icon?: string }): Promise<string> {
   const id = uid();
-  await dbWrite('preg_profiles/' + id, 'update', { nickname: p.nickname.trim(), lmp: p.lmp, notes: p.notes || '', icon: p.icon || '🌸', status: 'active', createdAt: Date.now() });
+  await dbWrite('gestations/' + id, 'update', { nickname: p.nickname.trim(), lmp: p.lmp, notes: p.notes || '', icon: p.icon || '🌸', status: 'active', createdAt: Date.now() });
   const prep: Record<string, any> = {};
   for (const g of PREP_GROUPS) PREP_SEED[g.id].forEach((text, i) => { prep[`s-${g.id}-${i}`] = { text, group: g.id, done: false }; });
   await dbWrite(listPath(id, 'prep'), 'update', { items: prep });
@@ -59,14 +62,14 @@ export const setActive = (id: string) => { S.activeId = id; lsSet('pt_active', i
 
 export async function deleteProfile(id: string) {
   for (const k of LIST_KEYS) await dbWrite(listPath(id, k), 'delete');
-  await dbWrite('preg_profiles/' + id, 'delete');
+  await dbWrite('gestations/' + id, 'delete');
 }
 
 /** Subscribes the in-memory state to both collections (live: every change from either phone arrives here). */
 export function subscribe() {
   const db = S.db!;
   const onErr = (what: string) => (e: any) => { console.warn(what, e); if (e?.code === 'revoked') { S.offline = true; hooks.render(); } };
-  db.collection('preg_profiles').onSnapshot(snap => {
+  db.collection('gestations').onSnapshot(snap => {
     const next: Record<string, Profile> = {};
     snap.docs.forEach(d => { if (d.exists) next[d.id] = d.data(); });
     S.profiles = next; S.loaded.profiles = true; S.ver++; hooks.scheduleRender();

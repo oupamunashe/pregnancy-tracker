@@ -7,7 +7,7 @@
      visible again. Version numbers stop an older copy from replacing a newer one.
    - Only this app's collections are fetched/applied, so rows belonging to other apps in the same table are ignored. */
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
-import { COLLECTIONS, type Collection, type DocSnap, type DocStore, type QuerySnap, type StoreStatus, type Unsub } from './adapter';
+import { COLLECTIONS, assertCollection, type Collection, type DocSnap, type DocStore, type QuerySnap, type StoreStatus, type Unsub } from './adapter';
 import { clone, merged } from './merge';
 import type { LocalStore, OutboxEntry } from './offline';
 
@@ -179,6 +179,7 @@ export class SupabaseAdapter implements DocStore {
 
   /* ---------- writes ---------- */
   private async write(path: string, op: OutboxEntry['op'], data?: any): Promise<void> {
+    assertCollection(path);   // never queue a write the database would refuse
     const e: OutboxEntry = { path, op, data: data === undefined ? undefined : clone(data), at: Date.now() };
     try { e.seq = await this.local.addOutbox(e); } catch { e.seq = -(++this.localSeq); }   // IndexedDB unavailable: memory only
     this.pending.push(e);

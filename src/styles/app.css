@@ -1,3 +1,8 @@
+/* Questrial (SIL OFL) — a free geometric sans that matches Century Gothic. Self-hosted via @fontsource so it works offline,
+   is precached by the PWA, and loads the same on iOS, Android and every browser. Century Gothic itself is licensed and can't be
+   embedded, so it is used where the device already has it; everywhere else Questrial renders. */
+@import '@fontsource/questrial/400.css';
+
 :root {
   --primary: #00A693; --primary-dark: color-mix(in srgb, var(--primary) 72%, #000);
   --bg: #D7CFC2; --accent: #C5A57D; --highlight: #B5996D;
@@ -8,7 +13,7 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--page); color: var(--ink); font-size: 16px; line-height: 1.45;
-  font-family: 'Century Gothic', CenturyGothic, AppleGothic, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  font-family: 'Century Gothic', CenturyGothic, 'Questrial', AppleGothic, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 /* form controls, sheets and headings must not fall back to the browser's default font */
 button, input, select, textarea, option, optgroup, table, th, td, h1, h2, h3, .sheet, .sheet *, .scrim, #toast { font-family: inherit; }
 h1 { font-size: 1.4rem; margin: .2rem 0 .8rem; } h2 { font-size: 1.1rem; margin: 0; } p { margin: .4rem 0; }

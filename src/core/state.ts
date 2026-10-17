@@ -9,7 +9,7 @@ export function lsDel(k: string) { try { localStorage.removeItem(k); } catch { /
 export interface UiState { view: string; week: number | null; prepGroup: string; sheetProfile: boolean; nameFilter: string; nurseryTab: string; photoKind: string; [k: string]: any }
 export interface State {
   db: DocStore | null; assets: FileStore | null; user: { id: string; email: string } | null;
-  profiles: Record<string, Profile>;                       // preg_profiles/<id>
+  profiles: Record<string, Profile>;                       // gestations/<id>
   lists: Record<string, { items?: Record<string, any> }>;   // preg_lists/<profileId>~<listKey>
   activeId: string | null;
   loaded: { profiles: boolean; lists: boolean };

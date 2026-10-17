@@ -12,7 +12,7 @@ Prep checklists (hospital bags ×3, admin) · **Budget** · **Baby names** (each
 src/auth/auth.ts        Supabase client (VITE_* env), sign-in helpers, members allow-list check
 src/data/supabase.ts    DocStore on public.docs: doc_merge writes, outbox, Realtime, version-guarded reads
 src/data/offline.ts     IndexedDB: cached docs + outbox (one DB per user; wiped on sign-out)
-src/data/db.ts          paths + write helpers + subscribe()  (preg_profiles/<id>, preg_lists/<id>~<list>)
+src/data/db.ts          paths + write helpers + subscribe()  (gestations/<id>, preg_lists/<id>~<list>)
 src/data/memory.ts      in-memory store for tests / demo
 src/core/               gestation engine, calc (kicks, 5-1-1, symptoms), content, state, types
 src/ui/                 shell, actions (event delegation), sheets, sign-in, views/*
@@ -23,7 +23,7 @@ tests/unit/             vitest: engine, merge, calc, SupabaseAdapter (offline ou
 ## Data model (in `public.docs`)
 | collection | id | data |
 |---|---|---|
-| `preg_profiles` | `<profileId>` | `{ nickname, lmp, notes, icon, status, createdAt }` |
+| `gestations` | `<profileId>` | `{ nickname, lmp, notes, icon, status, createdAt }` |
 | `preg_lists` | `<profileId>~<weekly\|symptoms\|kicks\|contractions\|prep\|budget\|names\|nursery\|vision\|photos\|daycares\|supplies\|diapers>` | `{ items: { <itemId>: item \| null } }` |
 
 Lists are **maps keyed by item id**, not arrays: `doc_merge` merges objects key by key but replaces arrays, so two phones adding

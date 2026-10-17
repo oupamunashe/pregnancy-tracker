@@ -32,7 +32,7 @@ function startDemo() {
   PREP_GROUPS.forEach(g => PREP_SEED[g.id].forEach((text, i) => { prep[`s-${g.id}-${i}`] = { text, group: g.id, done: i % 4 === 0 }; }));
   const now = Date.now(), M = 60000;
   const db = new MemoryAdapter({
-    'preg_profiles/demo': { nickname: 'Blueberry Peanut', lmp: '2026-09-17', notes: '', icon: '🫐', status: 'active', createdAt: 1 },
+    'gestations/demo': { nickname: 'Blueberry Peanut', lmp: '2026-09-17', notes: '', icon: '🫐', status: 'active', createdAt: 1 },
     'preg_lists/demo~prep': { items: prep },
     'preg_lists/demo~symptoms': { items: { a: { d: '2026-10-16', kind: 'Nausea', sev: 2, note: 'Mornings', by: 'P', at: now - 20 * 3600000 }, b: { d: '2026-10-15', kind: 'Fatigue', sev: 1, at: now - 44 * 3600000 } } },
     'preg_lists/demo~kicks': { items: { k1: { start: now - 3 * 3600000, end: now - 3 * 3600000 + 18 * M, goal: 10, by: 'M', taps: Object.fromEntries(Array.from({ length: 10 }, (_, i) => ['t' + i, now - 3 * 3600000 + (i + 1) * 100000])) } } },
