@@ -29,6 +29,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,webmanifest}'],
         navigateFallback: BASE + 'index.html',
         cleanupOutdatedCaches: true, clientsClaim: true, skipWaiting: true,
+        // the 14 Century Gothic files are ~4.6 MB in total: cache each one the first time it's used instead of precaching them all
+        runtimeCaching: [{ urlPattern: /\/fonts\/.*\.ttf$/, handler: 'CacheFirst', options: { cacheName: 'fonts', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } } }],
       },
       devOptions: { enabled: false },
     }),

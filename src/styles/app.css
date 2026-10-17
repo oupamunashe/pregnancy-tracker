@@ -1,7 +1,21 @@
-/* Questrial (SIL OFL) — a free geometric sans that matches Century Gothic. Self-hosted via @fontsource so it works offline,
-   is precached by the PWA, and loads the same on iOS, Android and every browser. Century Gothic itself is licensed and can't be
-   embedded, so it is used where the device already has it; everywhere else Questrial renders. */
-@import '@fontsource/questrial/400.css';
+/* Century Gothic (Paneuropean) — local files in /public/fonts, copied as-is into the build and served under the app's base path.
+   Weights used by the UI: 400 text, 600/700 labels and buttons, 800 headings, 900 big numbers; italics + 100/300 for completeness.
+   Each face is only downloaded when the page actually uses it (font-display: swap shows the system font for a split second). */
+@font-face { font-family: 'Century Gothic'; font-weight: 100; font-style: normal; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanThin.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 100; font-style: italic; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanThinItalic.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 300; font-style: normal; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanLight.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 300; font-style: italic; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanLightItalic.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 400; font-style: normal; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanRegular.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 400; font-style: italic; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanItalic.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 600; font-style: normal; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanSemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 600; font-style: italic; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanSemiBoldItalic.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 700; font-style: normal; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanBold.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 700; font-style: italic; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanBoldItalic.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 800; font-style: normal; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanExtraBold.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 800; font-style: italic; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanExtraBoldItalic.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 900; font-style: normal; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanBlack.ttf') format('truetype'); }
+@font-face { font-family: 'Century Gothic'; font-weight: 900; font-style: italic; font-display: swap; src: url('/fonts/CenturyGothicPaneuropeanBlackItalic.ttf') format('truetype'); }
+
 
 :root {
   --primary: #00A693; --primary-dark: color-mix(in srgb, var(--primary) 72%, #000);
@@ -13,11 +27,11 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--page); color: var(--ink); font-size: 16px; line-height: 1.45;
-  font-family: 'Century Gothic', CenturyGothic, 'Questrial', AppleGothic, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-/* form controls, sheets and headings must not fall back to the browser's default font */
-button, input, select, textarea, option, optgroup, table, th, td, h1, h2, h3, .sheet, .sheet *, .scrim, #toast { font-family: inherit; }
+  font-family: 'Century Gothic', sans-serif; }
+/* headings, buttons, form controls, tables, sheets and toasts all use it explicitly (browsers otherwise give form controls their own font) */
+h1, h2, h3, h4, button, input, select, textarea, option, optgroup, table, th, td, .sheet, .sheet *, #toast { font-family: 'Century Gothic', sans-serif; }
 h1 { font-size: 1.4rem; margin: .2rem 0 .8rem; } h2 { font-size: 1.1rem; margin: 0; } p { margin: .4rem 0; }
-button { font-family: inherit; font-size: inherit; line-height: inherit; color: inherit; cursor: pointer; } button:disabled { opacity: .45; cursor: not-allowed; }
+button { font-family: 'Century Gothic', sans-serif; font-size: inherit; line-height: inherit; color: inherit; cursor: pointer; } button:disabled { opacity: .45; cursor: not-allowed; }
 small, .small { font-size: .8rem; } .muted { color: var(--ink-soft); } .faint { opacity: .6; } .good { color: var(--good); font-weight: 600; } .neg { color: var(--bad); }
 .center { text-align: center; } .grow { flex: 1; min-width: 0; } .struck { text-decoration: line-through; opacity: .55; }
 .eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; color: var(--ink-soft); margin-bottom: .4rem; }
@@ -62,7 +76,7 @@ main { max-width: 820px; margin: 0 auto; padding: 16px; }
 .chip-btn.on { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 .field { margin-bottom: 12px; } .field label { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--ink-soft); margin-bottom: 4px; }
-.inp { width: 100%; border: 1px solid var(--accent); border-radius: 10px; padding: 9px 12px; background: #fff; font-family: inherit; font-size: inherit; }
+.inp { width: 100%; border: 1px solid var(--accent); border-radius: 10px; padding: 9px 12px; background: #fff; font-family: 'Century Gothic', sans-serif; font-size: inherit; }
 .inp:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
 .list { list-style: none; margin: 0; padding: 0; } .list > li { padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--bg) 60%, #fff); } .list > li:last-child { border: 0; }
 .li { display: flex; align-items: center; gap: 10px; }
