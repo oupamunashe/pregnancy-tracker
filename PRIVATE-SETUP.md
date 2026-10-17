@@ -61,3 +61,45 @@ When the Supabase variables are set, the app shows nothing but the login screen 
 - Local-first: each device works without a connection. After sign-in, each pregnancy profile is reconciled with Supabase by its `updatedAt` — **newest edit wins per profile**. Edits push ~2.5 s after you make them; the other device receives them live through Realtime (with a pull on focus and every minute as a safety net). A profile deleted on one device disappears from the other.
 - If you both edit the *same profile* within the same minute, the later save replaces the earlier one for that profile. For two people planning together this is rarely an issue; tell me if you want per-field merging.
 - Deleting a profile in Settings deletes the cloud copy too. Theme + custom diaper images are per person and sync to your own account.
+
+## Resetting a password / fixing "Invalid login credentials"
+Common causes: a typo, the user was never confirmed, or the account was created without a password. In Supabase → **SQL Editor** run this
+(replace the email and the new password; use a long, unique password):
+```sql
+update auth.users
+set encrypted_password = extensions.crypt('NEW-PASSWORD-HERE', extensions.gen_salt('bf')),
+    email_confirmed_at = coalesce(email_confirmed_at, now()),
+    updated_at = now()
+where email = lower('person@example.com');
+```
+Run it once per person. Then **clear the query** (it contains the password) and don't paste it anywhere.
+Alternative: Authentication → Users → ⋯ → *Send password recovery* (needs working email delivery), or delete the user and *Add user → Create new user* with **Auto Confirm User** ticked.
+
+To see each account's state: `select email, email_confirmed_at, encrypted_password is not null as has_password from auth.users;`
+(Both emails must also exist in `private.allowed_emails`.)
+
+**Test both logins safely on your computer** (nothing is printed or stored; passwords are typed hidden):
+```bash
+npm run check:supabase
+```
+It checks `.env.local`, that logged-out access is blocked, then signs in each account and confirms it can read the database.
+
+> `supabase/seed_allowlist.sql` now holds your real emails locally. Keep them out of git:
+> `git update-index --skip-worktree supabase/seed_allowlist.sql`
+
+## Live HTTPS link (accessible from anywhere)
+> Trade-off: this makes the **login page** public on the internet. Your data is still protected by Supabase login + Row Level Security
+> (a stranger sees only the sign-in form; the app code is not secret). Use strong passwords. If you'd rather keep everything private, skip this and use the home Wi-Fi setup above.
+
+### Option A — GitHub Pages (workflow included: `.github/workflows/deploy.yml`)
+**Needs GitHub Pro/Team** — on a free account Pages only works for *public* repos, and this repo must stay private.
+1. Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. Repo → **Settings → Secrets and variables → Actions → New repository secret**, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (same values as `.env.local`; never the service_role key).
+3. Push to `main` (or Actions → *Deploy to GitHub Pages* → Run workflow). The URL will be `https://<username>.github.io/pregnancy-tracker/`.
+
+### Option B — Vercel (free plan works with a private repo)
+https://vercel.com/new → import `oupamunashe/pregnancy-tracker` → add the same two environment variables → Deploy. (Or CLI: `npx vercel login`, `npx vercel link`, `npx vercel env add …`, `npx vercel --prod`.) No extra config needed.
+
+### After you have the live URL (either option)
+Supabase → **Authentication → URL Configuration**: set **Site URL** to the live URL and add it (with `/**`) under **Redirect URLs**. Then on each phone: open the link → sign in → **Add to Home Screen**.
+Realtime works the same on the live site because it connects straight to Supabase (`wss://<project>.supabase.co`), so edits on one phone appear on the other within a moment.

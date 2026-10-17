@@ -140,7 +140,7 @@ export async function deleteRemoteProfile(id: string): Promise<void> {
 export async function sendMagicLink(email: string): Promise<void> {
   const sb = getSupabase();
   if (!sb) throw new Error("Cloud sync isn't configured.");
-  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/settings` } });
+  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/dashboard/` } });
   fail("sign-in", error);
 }
 
