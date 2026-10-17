@@ -30,9 +30,13 @@ export function renderNav() {
   const lay = layout(tabsFor(S.cfg, S.me));
   const tb = $('#tabbar'), rn = $('#railnav'); if (!tb || !rn) return;
   tb.innerHTML = lay.bar.map(id => { const [i, , sh] = label(id); return `<button data-a="nav" data-v="${id}"><span aria-hidden="true">${i}</span>${sh}</button>`; }).join('');
-  const rail = (id: string) => { const [i, l] = label(id); return `<button data-a="nav" data-v="${id}">${i} ${l}</button>`; };
-  rn.innerHTML = ['home', ...lay.tabs].map(rail).join('') + (lay.overflow.length ? '<div class="rail-sep">More</div>' + lay.overflow.map(rail).join('') : '') + '<div class="rail-sep"></div>' + rail('settings')
-    + '<button data-a="nav-open" class="rail-cust">🧩 Customize menu</button>';
+  const rail = (id: string, cls = '') => { const [i, l] = label(id); return `<button data-a="nav" data-v="${id}" class="${cls}">${i} ${l}</button>`; };
+  // the extra modules hide behind ONE expandable "More" item (open by default only while you are on one of them)
+  const open = S.ui.railMore ?? lay.overflow.includes(S.ui.view), childActive = lay.overflow.includes(S.ui.view);
+  rn.innerHTML = ['home', ...lay.tabs].map(id => rail(id)).join('')
+    + (lay.overflow.length ? `<button class="rail-more ${childActive ? 'child-active' : ''}" data-a="rail-more" aria-expanded="${open}" aria-controls="rail-more-list">☰ More<span class="chev" aria-hidden="true">${open ? '▴' : '▾'}</span></button>
+      <div class="rail-sub" id="rail-more-list" ${open ? '' : 'hidden'}>${lay.overflow.map(id => rail(id)).join('')}</div>` : '')
+    + rail('settings', 'rail-settings');
 }
 
 export function shell() {
@@ -93,6 +97,7 @@ export function render() {
   hydrateFiles();
   const on = $('.wk.on'); if (on && v === 'weeks') on.scrollIntoView({ block: 'nearest', inline: 'center' });
   $('#tabbar [aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  if (S.ui.scrollTo) { const t = document.getElementById(S.ui.scrollTo); S.ui.scrollTo = null; t?.scrollIntoView({ block: 'start' }); }
 }
 
 /** Images stored in the private bucket carry data-file; resolve their short-lived signed URLs after each render. */

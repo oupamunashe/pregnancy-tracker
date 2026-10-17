@@ -11,14 +11,14 @@ import { placeholderImage } from '../core/diaper';
 import { shrinkImage } from './image';
 import { createProfile, delItem, deleteProfile, items, putItem, saveNav, saveProfile, seedBudget, seedNursery, seedSupplies, setActive } from '../data/db';
 import { EVENT_KINDS } from '../core/content';
-import { addTab, moveTab, removeTab, sanitizeTabs, DEFAULT_TABS } from '../core/nav';
-import { refreshNavSheet, sheetNav } from './navsheet';
+import { layout, addTab, moveTab, removeTab, sanitizeTabs, tabsFor, DEFAULT_TABS } from '../core/nav';
 import { sheetPassword } from './signin';
 import { closeSheet, openSheet, toast, val, $, $$ } from './sheet';
 import { render } from './shell';
 import { sheetSymptomBody } from './views/symptoms';
 
 const pid = () => ctx()!.id;
+const draft = () => S.ui.navDraft ?? tabsFor(S.cfg, S.me);
 /** "a.b.c" + v → { a: { b: { c: v } } } so doc_merge changes just that one leaf. */
 const nest = (path: string, v: any) => path.split('.').reduceRight((acc: any, k) => ({ [k]: acc }), v);
 const fail = (e: any) => { if (e?.message !== 'offline' && e?.message !== 'readonly') console.warn(e); };
@@ -92,7 +92,7 @@ async function act(a: string, el: HTMLElement, e: Event) {
     case 'switch-profile': setActive(d.id!); return go('home');
     case 'archive-profile': { const p = S.profiles[d.id!]; return void saveProfile(d.id!, { status: p.status === 'archived' ? 'active' : 'archived' }).catch(fail); }
     case 'delete-profile': if (confirm(`Delete “${S.profiles[d.id!]?.nickname}” and all its data for BOTH of you? This can’t be undone.`)) deleteProfile(d.id!).catch(fail); return;
-    case 'who': S.me = d.w as Who; lsSet('pt_me', d.w!); return render();
+    case 'who': S.me = d.w as Who; lsSet('pt_me', d.w!); S.ui.navDraft = null; return render();
     case 'password': return sheetPassword();
     case 'signout': return void session.signOut();
 
@@ -253,16 +253,18 @@ async function act(a: string, el: HTMLElement, e: Event) {
     }
     case 'shoot-signed': return void putItem(pid(), 'photographers', d.id!, { signed: (el as HTMLInputElement).checked }).catch(fail);
 
-    /* customizable navigation (config/preg-nav, one key per person) */
-    case 'nav-open': return sheetNav();
-    case 'nav-add': { const r = addTab(S.ui.navDraft || [], d.id!); if (!r.ok) return toast(r.error, 'bad'); S.ui.navDraft = r.tabs; return refreshNavSheet(); }
-    case 'nav-remove': S.ui.navDraft = removeTab(S.ui.navDraft || [], d.id!); return refreshNavSheet();
-    case 'nav-up': S.ui.navDraft = moveTab(S.ui.navDraft || [], d.id!, -1); return refreshNavSheet();
-    case 'nav-down': S.ui.navDraft = moveTab(S.ui.navDraft || [], d.id!, 1); return refreshNavSheet();
-    case 'nav-reset': S.ui.navDraft = [...DEFAULT_TABS]; return refreshNavSheet();
+    /* customizable navigation (config/preg-nav, one key per person) — edited inline in Settings → Navigation & Menu Layout */
+    case 'rail-more': S.ui.railMore = !(S.ui.railMore ?? layout(tabsFor(S.cfg, S.me)).overflow.includes(S.ui.view)); return render();
+    case 'nav-open': S.ui.scrollTo = 'nav-section'; return go('settings');
+    case 'nav-add': { const r = addTab(draft(), d.id!); if (!r.ok) return toast(r.error, 'bad'); S.ui.navDraft = r.tabs; return render(); }
+    case 'nav-remove': S.ui.navDraft = removeTab(draft(), d.id!); return render();
+    case 'nav-up': S.ui.navDraft = moveTab(draft(), d.id!, -1); return render();
+    case 'nav-down': S.ui.navDraft = moveTab(draft(), d.id!, 1); return render();
+    case 'nav-reset': S.ui.navDraft = [...DEFAULT_TABS]; return render();
+    case 'nav-cancel': S.ui.navDraft = null; return render();
     case 'nav-save': {
-      if (!S.me) return toast('Choose who you are in Settings first.', 'bad');
-      const tabs = sanitizeTabs(S.ui.navDraft); closeSheet();
+      if (!S.me) return toast('Choose who you are first.', 'bad');
+      const tabs = sanitizeTabs(S.ui.navDraft ?? tabsFor(S.cfg, S.me)); S.ui.navDraft = null;
       await saveNav(S.me, tabs).catch(fail); toast(`${pname(S.me)}’s menu saved`); return render();
     }
   }

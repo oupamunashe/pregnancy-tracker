@@ -6,7 +6,7 @@ export function lsGet(k: string): string | null { try { return localStorage.getI
 export function lsSet(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* private mode */ } }
 export function lsDel(k: string) { try { localStorage.removeItem(k); } catch { /* ignore */ } }
 
-export interface UiState { view: string; week: number | null; prepGroup: string; sheetProfile: boolean; nameFilter: string; nurseryTab: string; photoKind: string; careTab: string; eventsTab: string; shootKind: string; openEvent: string | null; navDraft: string[] | null; [k: string]: any }
+export interface UiState { view: string; week: number | null; prepGroup: string; sheetProfile: boolean; nameFilter: string; nurseryTab: string; photoKind: string; careTab: string; eventsTab: string; shootKind: string; openEvent: string | null; navDraft: string[] | null; railMore?: boolean; scrollTo?: string | null; [k: string]: any }
 export interface State {
   db: DocStore | null; assets: FileStore | null; user: { id: string; email: string } | null;
   cfg: Record<string, any>;                                // config/preg-* (e.g. preg-nav)
