@@ -1,9 +1,22 @@
 # Preggy — System Architecture & Specification
 
-> Private two-person pregnancy tracker (installable PWA). Last updated 2026-10-18.
+> **Preggy** — private two-person pregnancy tracker (installable PWA). Last updated 2026-10-18.
 > This document describes the code **as it is**: where something is provided by another system (the shared Supabase backend) or is optional / untested, it says so.
 
 **Contents** — [1 Overview](#1-system-overview--tech-stack) · [2 Data model](#2-data-model--database-schema) · [3 Modules](#3-core-application-modules) · [4 State & data flow](#4-state-management--data-flow) · [5 Security & limitations](#5-security-model--known-limitations) · [6 Maintenance](#6-maintenance--extension-guide)
+
+
+## At a glance
+
+| | |
+|---|---|
+| **Web address** | https://oupamunashe.github.io/pregnancy-tracker/ (GitHub Pages project site, base path `/pregnancy-tracker/`) |
+| **Repository** | `oupamunashe/pregnancy-tracker` on GitHub — default branch `main` (currently public) |
+| **Installed app name** | **Preggy** (PWA manifest `name` and `short_name`; page title "Preggy") |
+| **Framework** | Vite 6 + **TypeScript** + one global CSS file. **Not React** — the UI is vanilla TypeScript (string-template views + one delegated event handler) |
+| **Backend** | Supabase: PostgreSQL with Row Level Security, Auth, Realtime, Storage (private `files` bucket), optional Edge Function |
+| **Deploy** | push to `main` → GitHub Actions (`Deploy`) → static build → GitHub Pages |
+| **Status when written** | live site returns 200 and serves the "Preggy" manifest; the three most recent `Deploy` runs succeeded; 9 test files / 67 tests pass; typecheck clean |
 
 ---
 
@@ -379,4 +392,4 @@ Only `MODULES` (and `DEFAULT_TABS`, if it should be in the default bar) in `core
 Replace files in `public/`; update `index.html` (title, icon links), the `manifest` block in `vite.config.ts`, and `@font-face` rules in `app.css`. Fonts under `public/fonts/` are served as-is; add new weights as new `@font-face` rules.
 
 ### 6.7 Backups & restore
-A snapshot of the whole project (excluding `node_modules/`, `.git/`, `dist/`, `.vite/`, build leftovers and **secrets**: `.env*`, `*.local.sql`) is `preggy-tracker-backup-2026.zip` in the repo root (git-ignored locally). To restore: unzip, `npm install`, recreate `.env.local` from `.env.example`, `npm test`. **Application data lives in Supabase**, not in this repo — back it up from the Supabase dashboard (e.g. an export of `public.docs`).
+A snapshot of the whole project (excluding `node_modules/`, `.git/`, `dist/`, `.vite/`, build leftovers and **secrets**: `.env*`, `*.local.sql`) is `pregnancy-tracker-backup-2026.zip` in the repo root (git-ignored locally; an earlier identical-content copy named `preggy-tracker-backup-2026.zip` may also exist). To restore: unzip, `npm install`, recreate `.env.local` from `.env.example`, `npm test`. **Application data lives in Supabase**, not in this repo — back it up from the Supabase dashboard (e.g. an export of `public.docs`).
